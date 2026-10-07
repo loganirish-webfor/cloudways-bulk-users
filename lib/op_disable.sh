@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# op_disable_site: revoke the employee's access on the current site without
+# deleting anything. Reversible with op_restore_site via the marker usermeta.
+
+app_passwords_delete_all() { # ID. rc 0 also when none exist (WP-CLI exits 0 then) or the feature is unavailable.
+  wpx_nostdout user application-password delete "$1" --all && return 0
+  # Only the "feature absent" messages of old WP / WP-CLI count as success;
+  # any other failure (timeout, fatal, DB error) stays a failure.
+  case "$WP_ERR" in
+    *"not available"*|*"not a registered"*)
+      R_WARN="${R_WARN:+$R_WARN; }application passwords unavailable on this site"; return 0 ;;
+  esac
+  return 1
+}
+
+remove_all_roles() { # ID
+  local id="$1" r
+  user_roles "$id" || return 1
+  for r in ${UROLES//,/ }; do
+    wpx_nostdout user remove-role "$id" "$r" || return 1
+  done
+  wpx_try user list-caps "$id" || return 1
+  [ -z "$WP_OUT" ] || R_WARN="${R_WARN:+$R_WARN; }user still has direct capabilities"
+  return 0
+}
+
+disable_steps() { # ID RESUME ORIG_EMAIL
+  local id="$1" resume="$2" orig_email="$3"
+  if [ "$resume" -eq 0 ]; then
+    MK_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    MK_SERVER="$(printf '%s' "$SERVER_NAME" | tr -c 'A-Za-z0-9._-' '_')"
+    MK_ROLES="$UROLES"; MK_EMAIL="$orig_email"
+    if ! marker_write "$id" in_progress; then
+      record_result FAILED "marker not written, nothing changed: $(err_reason)"; return
+    fi
+  fi
+  try_step 2 "password"             wpx_nostdout user reset-password "$id" --skip-email
+  try_step 3 "sessions"             wpx_nostdout user session destroy "$id" --all
+  try_step 4 "application passwords" app_passwords_delete_all "$id"
+  try_step 5 "roles"                remove_all_roles "$id"
+  try_step 6 "email"                wpx_nostdout user update "$id" --user_email="disabled+${id}@webfor.invalid"
+  if [ -n "$step_fail" ]; then
+    record_result FAILED "PARTIAL (completed: 1${step_ok:+,$step_ok}; failed: $step_fail); re-run disable to resume"
+    return
+  fi
+  if ! marker_write "$id" complete; then
+    record_result FAILED "access removed but marker not finalised: $(err_reason)"; return
+  fi
+  record_result DISABLED "roles removed: ${MK_ROLES:-none}; email neutralised"
+}
+
+op_disable_site() {
+  local id rc resume=0 orig_email="" r n_admins
+  R_WP="Yes"
+  lookup_user "$USERNAME" || { record_result FAILED "user lookup: $(err_reason)"; return; }
+  if [ "$U_FOUND" -ne 1 ]; then R_EXISTS="No"; R_ACTION="NONE"; record_result "NOT FOUND" ""; return; fi
+  id="$U_ID"; R_EXISTS="Yes"
+  user_roles "$id" || { record_result FAILED "role lookup: $(err_reason)"; return; }
+  R_ROLE="${UROLES:--}"
+
+  marker_read "$id"; rc=$?
+  if [ "$rc" -eq 2 ]; then record_result FAILED "marker lookup: $(err_reason)"; return; fi
+  if [ "$rc" -eq 0 ]; then
+    if [ "$(lower "$MK_EMAIL")" != "$(lower "$EMAIL")" ]; then
+      R_ACTION="NONE"; record_result "EMAIL MISMATCH" "stored email differs from --email"; return
+    fi
+    if [ "$MK_STATE" = "complete" ]; then R_ACTION="NONE"; record_result "ALREADY DISABLED" ""; return; fi
+    resume=1
+  else
+    user_field "$id" user_email || { record_result FAILED "email lookup: $(err_reason)"; return; }
+    orig_email="$UF"
+    if [ "$(lower "$orig_email")" != "$(lower "$EMAIL")" ]; then
+      R_ACTION="NONE"; record_result "EMAIL MISMATCH" "username exists with a different email"; return
+    fi
+    for r in ${UROLES//,/ }; do
+      valid_slug "$r" || { R_ACTION="NONE"; record_result FAILED "unusual role name '$r'; handle manually"; return; }
+    done
+    if has_role "$UROLES" administrator; then
+      wpx_try user list --role=administrator --field=ID || { record_result FAILED "administrator count: $(err_reason)"; return; }
+      n_admins="$(printf '%s\n' "$WP_OUT" | grep -c .)"
+      if [ "$n_admins" -le 1 ]; then
+        R_ACTION="NONE"; record_result "LAST ADMIN" "only administrator on this site"; return
+      fi
+    fi
+  fi
+
+  R_ACTION="DISABLE"; [ "$resume" -eq 1 ] && R_ACTION="DISABLE (resume)"
+  if [ "$EXECUTE" -ne 1 ]; then record_result "WOULD DISABLE" "roles: ${UROLES:-none}"; return; fi
+  disable_steps "$id" "$resume" "$orig_email"
+}

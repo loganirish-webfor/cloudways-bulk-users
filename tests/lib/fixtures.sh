@@ -109,3 +109,20 @@ app_pw_ok() { # APP LOGIN APP_PASSWORD -> yes|no
   # WP 7.x stores app passwords with a fast hash wp_check_password() cannot verify; use core's own check.
   WWU_L="$2" WWU_PW="$3" fwp "$1" eval 'add_filter( "application_password_is_api_request", "__return_true" ); $r = wp_authenticate_application_password( null, getenv( "WWU_L" ), getenv( "WWU_PW" ) ); echo ( $r instanceof WP_User ) ? "yes" : "no";' 2>/dev/null
 }
+
+prep_logan() {
+  local a id
+  fixtures_reset
+  run_tool "${ADD[@]}" --sites app_a,app_b --execute
+  for a in app_a app_b; do
+    id="$(fwp "$a" user get logan.irish --field=ID)"
+    printf -v "LID_$a" '%s' "$id"
+    fwp "$a" user update "$id" --user_pass=known-pass-1 >/dev/null   # sandbox-only test value
+    fwp "$a" post create --post_author="$id" --post_title="Logan post" --post_status=publish --porcelain >/dev/null
+    printf -v "APP_PW_$a" '%s' "$(fwp "$a" user application-password create "$id" probe --porcelain)"
+    fwp "$a" eval "WP_Session_Tokens::get_instance( $id )->create( time() + 3600 );"
+    # user update --user_pass may log notices via the mailtrap; clear so later mail_count checks measure only the tool.
+    rm -f "$FX_ROOT/$a/public_html/wp-content/mail.log"
+  done
+  fwp app_b user add-role "$LID_app_b" editor >/dev/null
+}
