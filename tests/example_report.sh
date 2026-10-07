@@ -26,7 +26,7 @@ echo
 echo "Generated from the Docker sandbox by \`tests/example_report.sh\`. Site names are"
 echo "fixtures (\`app_a\`, \`https://app_a.test\`, and so on), the server label is \`testsrv\`, and the"
 echo "log paths are sandbox paths. The \`[n/N] folder\` progress lines the tool prints to"
-echo "stderr are left out. Each block is one run of the tool; blocks 2 to 6 follow on from"
+echo "stderr are left out. Each block is one run of the tool; blocks 2 to 7 follow on from"
 echo "each other, starting from the same fresh fixtures as block 1."
 echo
 block "1. Add: dry run on every application" "${ADD[@]}" --all
@@ -34,4 +34,5 @@ block "2. Add: create on two sites" "${ADD[@]}" --sites app_a,app_b --execute
 block "3. Add again: duplicate protection" "${ADD[@]}" --sites app_a,app_b --execute
 block "4. Disable: dry run" "${DIS[@]}" --all
 block "5. Disable: live on the two sites" "${DIS[@]}" --sites app_a,app_b --execute
-block "6. Restore: live" "${RST[@]}" --sites app_a,app_b --execute
+block "6. Restore: dry run" "${RST[@]}" --sites app_a,app_b
+block "7. Restore: live" "${RST[@]}" --sites app_a,app_b --execute

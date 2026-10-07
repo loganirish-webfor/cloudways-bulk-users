@@ -6,7 +6,9 @@ master user.** Nothing is installed on client sites. The tool never deletes a
 WordPress user or any content.
 
 Read `docs/limitations.md` before the first live run, and use
-`docs/pilot-results.md` to record the Server 3 pilot.
+`docs/pilot-results.md` to record the Server 3 pilot (a first trial of the tool on
+2-3 Webfor-managed sites on Cloudways Server 3, reviewed by Jason before any
+wider use).
 
 ## Install
 
@@ -20,9 +22,10 @@ chmod +x ~/webfor-wp-users/bin/webfor-wp-users
 ```
 
 Check WP-CLI works for your user: `wp --info`. The tool calls `wp` from your
-`PATH` (set `WP_BIN=/path/to/wp` to use another binary). It was tested with
-bash 5.3, WP-CLI 2.12.0 and WordPress 7.1.3 in the Docker sandbox, not on a
-Cloudways server (see the Server 3 pilot).
+`PATH` (set `WP_BIN=/path/to/wp` to use another binary). It was tested only in
+the Docker sandbox (GNU bash 5.3.9, WP-CLI 2.12.0, WordPress 7.1.3), not on a
+Cloudways server. Check the server with `bash --version`; other bash versions
+are untested.
 
 Print the built-in help at any time: `bin/webfor-wp-users --help`.
 
@@ -33,10 +36,9 @@ Print the built-in help at any time: `bin/webfor-wp-users --help`.
    `--execute`.** For the pilot, always use `--sites`, never `--all`. Do not run
    across a whole server until Jason has approved the pilot results.
 
-A dry run still starts WP-CLI on each site (it only runs read commands) and
-still writes a log file. The tool writes nothing to any WordPress database in a
-dry run; the sandbox suite checks this by comparing database fingerprints before
-and after.
+A dry run still starts WP-CLI on each site (the tool issues only read
+commands in a dry run) and still writes a log file. The test suite checks this by
+comparing a fingerprint of users, usermeta, posts and options before and after.
 
 ## Choosing applications
 
@@ -69,8 +71,8 @@ bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com \
 ```
 
 `--role` defaults to `administrator`. Another role is accepted only if the site
-has it, and roles that a plugin registers (for example `shop_manager`) are not
-visible to the tool, so it reports `FAILED - role '...' does not exist on this
+has it, and a role that a plugin registers only at runtime (not stored in the
+database) is not visible to the tool, so it reports `FAILED - role '...' does not exist on this
 site` for them (see limitations).
 
 Per site the tool looks the account up by username and by email first:
@@ -85,8 +87,8 @@ Per site the tool looks the account up by username and by email first:
 
 ### Password behaviour
 
-No password is passed. WordPress generates one that nobody sees (the tool
-discards the output) and **no email is sent**. The employee sets their own
+No password is passed. WordPress generates one that nobody sees (the tool uses
+`--porcelain`, so no password is ever printed) and **no email is sent**. The employee sets their own
 password with **Lost your password?** on each site's login page, which emails a
 reset link to their address. That needs the site's outbound email to work, so
 check it during the pilot.
@@ -102,11 +104,12 @@ set up 2FA per the Webfor onboarding standard.
 ## Disable an employee (offboarding)
 
 ```bash
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --all             # dry run
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --all --execute   # asks you to type ALL
+bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --sites <apps>             # dry run
+bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --sites <apps> --execute   # live
 ```
 
-With `--sites` instead of `--all` there is no prompt. Per application, in this
+After the pilot has been approved, `--all` replaces `--sites <apps>`; with
+`--execute` it asks you to type `ALL`. With `--sites` there is no prompt. Per application, in this
 order (the step numbers appear in `PARTIAL` failure messages):
 
 1. Saves the original roles and email in user meta `webfor_disabled`, marked
@@ -122,8 +125,8 @@ order (the step numbers appear in `PARTIAL` failure messages):
    so the employee's real mailbox receives nothing.
 7. Marks the meta `complete`.
 
-The user record, ID, username, posts, orders and comments stay. Nothing is
-deleted. Account deletion is a separate manual process.
+The user record, ID, username, posts, orders and comments stay. No user or
+content is deleted (only the application passwords, step 4). Account deletion is a separate manual process.
 
 | Result | Meaning |
 |---|---|
@@ -134,6 +137,8 @@ deleted. Account deletion is a separate manual process.
 | `EMAIL MISMATCH` | The account has that username but another email (or the stored original email differs from `--email`). Not touched. |
 | `LAST ADMIN` | The account is the only user with the administrator role on the site. Not touched. |
 | `FAILED - unusual role name '...'; handle manually` | A stored role name contains unexpected characters. Nothing is changed. |
+| `FAILED - marker not written, nothing changed: reason` | Step 1 failed. The site is untouched; fix the cause and run again. |
+| `FAILED - access removed but marker not finalised: reason` | Steps 2 to 6 succeeded but step 7 failed. Re-run `disable`; it resumes and finishes. |
 | `FAILED - PARTIAL (completed: 1,2,3; failed: 4 (...): reason); re-run disable to resume` | Access may be partly removed. |
 
 The account must match both `--username` and `--email`, so a client account that
@@ -143,7 +148,8 @@ happens to share the username is never touched. `--email` must be in
 
 If a run reports `FAILED - PARTIAL`, fix the reported cause and **re-run the same
 command**: it sees the `in_progress` marker and repeats the steps (they are safe
-to repeat). The `LAST ADMIN` check is skipped on a resume.
+to repeat). The `LAST ADMIN` check is skipped on a resume. In the table a
+resumed site shows ACTION `DISABLE (resume)`.
 
 ## Restore an employee
 
@@ -167,6 +173,7 @@ that were destroyed are not recreated.
 | `EMAIL CONFLICT` | The original email now belongs to another account. Nothing changed. |
 | `FAILED - unusual stored role name '...'; handle manually` | Refused before changing anything. |
 | `FAILED - PARTIAL (completed: ...; failed: ...); marker kept, re-run restore` | See below. |
+| `FAILED - access restored but marker not removed: ...` | Email and roles are back but the marker is still there. Re-run `restore` to finish. |
 
 Restore steps run in this order: email (step 1), roles (step 2), marker removal
 (step 3). If the email step fails the roles step still runs, so for a moment the
@@ -194,22 +201,30 @@ its reason. `docs/example-report.md` shows real output from the sandbox.
 `SKIPPED` reasons: `no such application folder`, `no public_html`, `not
 WordPress`, `WordPress files found but not installed`, `multisite, handle
 manually`. A site whose database or `wp-config.php` is broken is `FAILED`, not
-`SKIPPED`.
+`SKIPPED`. The WP column reads `No` whenever WordPress could not be confirmed,
+which includes a real WordPress site whose database is down (that row is `FAILED`).
+
+**Read the WARNINGS column on every row.** Warnings do not change the exit code
+and do not put a site in the review list: a site with a warning is still reported
+`DISABLED` (or `RESTORED`) and the run can exit 0.
 
 Warnings you may see:
 
 - `user still has direct capabilities` (disable): capabilities granted to the
   user directly, not through a role, were not removed. Check the account by hand.
-- `application passwords unavailable on this site` (disable): WordPress older than
-  5.6 has no application passwords, so that step could not run. This is a warning,
-  not a failure.
+- `application passwords unavailable on this site` (disable): WordPress reported
+  application passwords as unavailable, either because the site is older than 5.6
+  or because the feature is turned off for the site ("Application passwords are
+  not available for this site"). The step is treated as a warning, not a failure,
+  but **the user's application passwords were NOT deleted**. Check the user's
+  profile (or `wp user application-password list <id>`) by hand and revoke them.
 - `account had no roles when disabled` (restore).
 
 **Exit codes**
 
 | Code | Meaning |
 |---|---|
-| 0 | No site `FAILED` and none needs review. `SKIPPED` sites are listed in the review list but do not change the exit code, so read the list. |
+| 0 | No site `FAILED` and none needs review. `SKIPPED` sites are listed in the review list but do not change the exit code, and warnings affect neither, so read the list and the WARNINGS column. |
 | 1 | At least one `FAILED`, `EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH` or `LAST ADMIN`; or there were no applications to process. |
 | 2 | Bad arguments, or the `ALL` confirmation was not given. |
 
@@ -217,7 +232,8 @@ Warnings you may see:
 
 Every run, dry or live, writes `logs/<YYYYMMDD-HHMMSS>_<server>_<op>.log` and a
 sibling `.tsv` (one row per site) in the `--log-dir` (default `./logs`, relative
-to where you run the tool). Both are mode 600 and hold no credentials; they do
+to where you run the tool). If a file for the same second already exists the name
+gets a `-2` (`-3`, ...) suffix before the extension. Both are mode 600 and hold no credentials; they do
 contain the employee's username and email and the site URLs. The report is
 also copied into the log (the `[n/N]` progress lines are not).
 

@@ -13,9 +13,12 @@
 - **Direct capabilities.** A user with capabilities granted directly (not via
   roles) keeps them after role removal. The report warns `user still has direct
   capabilities` when this happens.
-- **Application passwords** need WordPress 5.6+. On older sites the step cannot
-  run; the report shows the warning `application passwords unavailable on this
-  site` and the site is still marked `DISABLED`, not `FAILED`.
+- **Application passwords** need WordPress 5.6+ and the feature enabled. If
+  WordPress reports them unavailable (an old site, or the feature turned off for
+  the site) the step cannot run; the report shows the warning `application
+  passwords unavailable on this site` and the site is still marked `DISABLED`,
+  not `FAILED`. **In that case the user's application passwords were not
+  removed**: check the user's profile by hand.
 - **Only accounts this tool disabled** can be restored by it. Without the
   `webfor_disabled` marker the result is `NOT DISABLED` and the tool never
   guesses roles.
@@ -41,9 +44,10 @@
 ## Roles
 
 - **Plugin-defined roles are invisible to `add --role`.** Role lookups run with
-  plugins skipped, so a role such as `shop_manager` (WooCommerce) reports
-  `FAILED - role 'shop_manager' does not exist on this site`. The default
-  `administrator` role is unaffected. Create the user with a built-in role and
+  plugins skipped, so a role that a plugin registers only at runtime (not stored
+  in the database) reports `FAILED - role '<name>' does not exist on this site`.
+  Roles saved in the database are visible. The default `administrator` role is
+  unaffected. Create the user with a built-in role and
   change it by hand if needed.
 - **Unusual stored role names.** If a user's role name contains anything other
   than lowercase letters, digits, `_` or `-`, `disable` refuses with `FAILED -
@@ -79,20 +83,25 @@
 
 ## Environment
 
-- **Time.** Roughly 7 to 20 WP-CLI loads per site (a live disable or restore is at the
+- **Time.** Roughly 4 to 20 WP-CLI loads per site (a live disable or restore is at the
   high end). A hung call is stopped after
   `WP_TIMEOUT` seconds (default 120) and the site is reported `FAILED`. Sites are
   processed one at a time.
-- **No `timeout` command.** On hosts without `timeout` (macOS, for example) WP-CLI
-  runs with no per-call time limit. Cloudways Linux servers have it.
-- **Exit code and `SKIPPED`.** `SKIPPED` sites appear in the manual-review list
-  but do not make the exit code 1. Read the list; do not rely on the exit code
-  alone.
+- **No `timeout` command.** The tool uses the system `timeout` command when it
+  exists. Check with `command -v timeout`; if it is missing (macOS, for example)
+  WP-CLI runs with no per-call time limit.
+- **Exit code, `SKIPPED` and warnings.** `SKIPPED` sites appear in the
+  manual-review list but do not make the exit code 1. Warnings (such as `user
+  still has direct capabilities`) affect neither the exit code nor the review
+  list, and the site is still reported `DISABLED`. Read the review list and the
+  WARNINGS column; do not rely on the exit code alone.
 - **Tested versions.** Behaviour was measured against WP-CLI 2.12.0 and
-  WordPress 7.1.3 in the Docker sandbox with bash 5.3 (see the header of
-  `tests/t_00_probe.sh`). It has not been run on a Cloudways server yet; other
+  WordPress 7.1.3 in the Docker sandbox (the WP-CLI findings are in the header of
+  `tests/t_00_probe.sh`); the sandbox ran GNU bash 5.3.9 and other bash versions
+  are untested. It has not been run on a Cloudways server yet; other
   WP-CLI or WordPress versions may differ in the details the tool parses.
 - **Not tested in a browser.** The sandbox verifies authentication, sessions,
   capabilities, and application passwords through WordPress itself, not an HTTP
-  request to `/wp-admin`. The Server 3 pilot must check browser access, including
+  request to `/wp-admin`. The Server 3 pilot (a first trial on 2-3 Webfor-managed sites on Cloudways Server
+  3, reviewed by Jason before wider use) must check browser access, including
   that an already logged-in browser is signed out.

@@ -3,7 +3,7 @@
 Generated from the Docker sandbox by `tests/example_report.sh`. Site names are
 fixtures (`app_a`, `https://app_a.test`, and so on), the server label is `testsrv`, and the
 log paths are sandbox paths. The `[n/N] folder` progress lines the tool prints to
-stderr are left out. Each block is one run of the tool; blocks 2 to 6 follow on from
+stderr are left out. Each block is one run of the tool; blocks 2 to 7 follow on from
 each other, starting from the same fresh fixtures as block 1.
 
 ### 1. Add: dry run on every application
@@ -11,7 +11,7 @@ each other, starting from the same fresh fixtures as block 1.
 ```text
 DRY RUN: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-204717_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-205810_testsrv_add.log
 
 DRY RUN RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -51,7 +51,7 @@ DRY RUN: no changes were made.
 ```text
 EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-204723_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-205815_testsrv_add.log
 
 EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -68,7 +68,7 @@ Totals:
 ```text
 EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-204725_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-205817_testsrv_add.log
 
 EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -85,7 +85,7 @@ Totals:
 ```text
 DRY RUN: disable logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-204727_testsrv_disable.log
+Log: /tmp/wwu-logs/20261007-205819_testsrv_disable.log
 
 DRY RUN RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -125,7 +125,7 @@ DRY RUN: no changes were made.
 ```text
 EXECUTE: disable logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-204733_testsrv_disable.log
+Log: /tmp/wwu-logs/20261007-205825_testsrv_disable.log
 
 EXECUTE RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -137,12 +137,31 @@ Totals:
   Applications processed: 2
 ```
 
-### 6. Restore: live
+### 6. Restore: dry run
+
+```text
+DRY RUN: restore logan.irish <logan.irish@webfor.com> server=testsrv
+Applications to process: 2
+Log: /tmp/wwu-logs/20261007-205830_testsrv_restore.log
+
+DRY RUN RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
+SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
+https://app_a.test (app: app_a) | Yes | Yes | - | RESTORE | WOULD RESTORE - roles: administrator | -
+https://app_b.test (app: app_b) | Yes | Yes | - | RESTORE | WOULD RESTORE - roles: administrator | -
+
+Totals:
+  WOULD RESTORE: 2
+  Applications processed: 2
+
+DRY RUN: no changes were made.
+```
+
+### 7. Restore: live
 
 ```text
 EXECUTE: restore logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-204738_testsrv_restore.log
+Log: /tmp/wwu-logs/20261007-205832_testsrv_restore.log
 
 EXECUTE RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
