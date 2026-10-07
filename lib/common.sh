@@ -13,7 +13,8 @@ log_line() {
 # say: print to the console and the log.
 say() { printf '%s\n' "$*"; log_line "$*"; }
 
-valid_username() { [[ "$1" =~ ^[a-z0-9._-]+$ ]] && [[ ! "$1" =~ ^[0-9]+$ ]]; }
+# A leading '-' is rejected so a name can never be taken for a wp flag.
+valid_username() { [[ "$1" =~ ^[a-z0-9._-]+$ ]] && [[ ! "$1" =~ ^[0-9]+$ ]] && [[ "$1" != -* ]]; }
 valid_email() {
   local re='^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
   [[ "$1" =~ $re ]]

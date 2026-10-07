@@ -21,6 +21,8 @@ run_tool disable --username logan.irish --email logan.irish@webfor.com --sites '
 assert_eq 2 "$RC" "odd characters in --sites rejected"
 run_tool disable --username logan.irish --email logan.irish@webfor.com --all --exclude ../x
 assert_eq 2 "$RC" "path traversal in --exclude rejected"
+run_tool disable --username -x --email logan.irish@webfor.com --all
+assert_eq 2 "$RC" "username with a leading dash rejected"
 run_tool bogus --username x
 assert_eq 2 "$RC" "unknown operation rejected"
 
@@ -52,9 +54,25 @@ assert_eq 1 "$RC" "empty apps root -> exit 1"
 
 run_tool disable --username logan.irish --email logan.irish@webfor.com --all --exclude app_a
 assert_eq "" "$(status_of app_a)" "--exclude removes a folder from the run"
+if [ -n "$(status_of app_b)" ]; then ok "--exclude leaves the other folders in the run"; else bad "--exclude leaves the other folders in the run"; fi
 
 # --- logging ---------------------------------------------------------------
 LOGF="${TSV%.tsv}.log"
 assert_eq 600 "$(stat -c %a "$LOGF")" "log file mode 600"
+assert_eq 600 "$(stat -c %a "$TSV")" "tsv file mode 600"
 assert_contains "$(cat "$LOGF")" "server=testsrv" "log records the server"
 assert_contains "$(cat "$LOGF")" "logan.irish" "log records the username"
+
+# --- marker_read: only a real "absent" is rc 1; silent failures are rc 2 ----
+mk_rc() { # WP_BIN-or-empty -> marker_read rc for user 1 in app_a
+  ( [ -n "$1" ] && WP_BIN="$1"
+    . "$ROOT/lib/common.sh"; . "$ROOT/lib/wp.sh"
+    SITE_PATH="$FX_ROOT/app_a/public_html"
+    marker_read 1; echo $? )
+}
+printf '#!/bin/sh\nexit 255\n' > /tmp/wwu-silent-fail-255; chmod +x /tmp/wwu-silent-fail-255
+printf '#!/bin/sh\nexit 124\n' > /tmp/wwu-silent-fail-124; chmod +x /tmp/wwu-silent-fail-124
+assert_eq 1 "$(mk_rc "")" "marker_read: real user without a marker -> rc 1 (absent)"
+assert_eq 2 "$(mk_rc /tmp/wwu-silent-fail-255)" "marker_read: silent exit 255 -> rc 2 (error), not absent"
+assert_eq 2 "$(mk_rc /tmp/wwu-silent-fail-124)" "marker_read: silent exit 124 (timeout) -> rc 2 (error), not absent"
+rm -f /tmp/wwu-silent-fail-255 /tmp/wwu-silent-fail-124

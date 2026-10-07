@@ -8,6 +8,7 @@ reset_site_state() {
   SITE_PATH=""; SITE_LABEL=""
   R_WP="-"; R_EXISTS="-"; R_ROLE="-"; R_ACTION="-"; R_WARN=""
   step_ok=""; step_fail=""
+  UF=""; UROLES=""
 }
 
 is_review_status() {

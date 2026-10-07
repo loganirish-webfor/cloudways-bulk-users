@@ -139,15 +139,15 @@ confirm_all() {
 }
 
 init_run() {
-  umask 077
-  mkdir -p "$LOG_DIR" || die_usage "cannot create log dir $LOG_DIR"
+  ( umask 077; mkdir -p "$LOG_DIR" ) || die_usage "cannot create log dir $LOG_DIR"
   local stamp server n=1
   stamp="$(date '+%Y%m%d-%H%M%S')"
   server="$(printf '%s' "$SERVER_NAME" | tr -c 'A-Za-z0-9._-' '_')"
   LOG_FILE="$LOG_DIR/${stamp}_${server}_${OPERATION}.log"
   while [ -e "$LOG_FILE" ]; do n=$((n + 1)); LOG_FILE="$LOG_DIR/${stamp}_${server}_${OPERATION}-$n.log"; done
   TSV_FILE="${LOG_FILE%.log}.tsv"
-  : > "$LOG_FILE"; : > "$TSV_FILE"
+  # umask only for these two files: it must not leak into wp child processes.
+  ( umask 077; : > "$LOG_FILE"; : > "$TSV_FILE" )
 }
 
 process_site() {

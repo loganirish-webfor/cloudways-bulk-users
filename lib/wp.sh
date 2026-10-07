@@ -85,10 +85,12 @@ json_str() { printf '%s' "$1" | sed -n "s/.*\"$2\":\"\([^\"]*\)\".*/\1/p"; }
 
 # marker_read ID -> rc 0 present, 1 absent, 2 error. Sets MK_*.
 # A missing key makes `wp user meta get` exit 1 with no message (or "Could not find").
+# Only exit status 1 counts as "absent"; a timeout (124), SIGKILL (137), PHP fatal
+# (255) etc. are errors even when stderr is empty, or "absent" would hide a marker.
 marker_read() {
   MK_STATE=""; MK_AT=""; MK_SERVER=""; MK_ROLES=""; MK_EMAIL=""
   if ! wpx_try user meta get "$1" "$MARKER_KEY" --format=json; then
-    if [ -z "$(err_clean)" ] || [[ "$WP_ERR" == *"Could not find"* ]]; then return 1; fi
+    if [ "$WP_RC" -eq 1 ] && { [ -z "$(err_clean)" ] || [[ "$WP_ERR" == *"Could not find"* ]]; }; then return 1; fi
     return 2
   fi
   [ -n "$WP_OUT" ] || return 1
