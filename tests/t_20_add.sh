@@ -58,3 +58,50 @@ assert_eq editor "$(roles_sorted app_exists logan.irish)" "role not modified"
 run_tool add --username new.person --email new.person@webfor.com --first-name New --last-name Person --display-name "New Person" --role nosuchrole --sites app_a --execute
 assert_eq FAILED "$(status_of app_a)" "unknown role -> FAILED"
 assert_contains "$(detail_of app_a)" "does not exist" "unknown role reason"
+assert_eq 0 "$(fwp app_a user list --login=new.person --format=count)" "unknown role: no new.person user created"
+assert_eq "$((users_before + 1))" "$(user_count app_a)" "unknown role: user count unchanged"
+
+# --- --send-email sends exactly one mail on a live create -------------------
+fixtures_reset
+run_tool "${ADD[@]}" --sites app_b --send-email --execute
+assert_eq CREATED "$(status_of app_b)" "send-email: app_b CREATED"
+assert_eq 1 "$(fwp app_b user list --login=logan.irish --format=count)" "send-email: user created"
+# WordPress core sends two mails for a notified create: the site admin's "New User Registration"
+# notice and the new user's "Login Details" (measured).
+mlog="$FX_ROOT/app_b/public_html/wp-content/mail.log"
+assert_eq 2 "$(mail_count app_b)" "send-email: WordPress sends its two notifications"
+assert_eq 1 "$(grep -c '^logan.irish@webfor.com |' "$mlog")" "send-email: exactly one mail goes to the new user"
+fixtures_reset
+
+# --- disabled-employee branches (marker built by hand) ----------------------
+MARKER_TPL='{"at":"2026-10-07T00:00:00Z","server":"srv","roles":["administrator"],"email":"%s","state":"complete"}'
+
+# (a) same account: email unchanged, marker present
+fwp app_a user create logan.irish logan.irish@webfor.com --role=administrator >/dev/null
+did="$(fwp app_a user get logan.irish --field=ID)"
+fwp app_a user meta update "$did" webfor_disabled "$(printf "$MARKER_TPL" logan.irish@webfor.com)" --format=json >/dev/null
+fp_a="$(fp app_a)"
+run_tool "${ADD[@]}" --sites app_a --execute
+assert_eq "ALREADY EXISTS" "$(status_of app_a)" "disabled (same email): ALREADY EXISTS"
+assert_contains "$(detail_of app_a)" "DISABLED, use restore" "disabled (same email): points to restore"
+assert_eq "$fp_a" "$(fp app_a)" "disabled (same email): database unchanged"
+
+# (b) username-only: email swapped to the disabled+ID placeholder, marker keeps the real email
+fwp app_a user update "$did" --user_email="disabled+$did@webfor.invalid" >/dev/null
+fp_b="$(fp app_a)"
+run_tool "${ADD[@]}" --sites app_a --execute
+assert_eq "ALREADY EXISTS" "$(status_of app_a)" "disabled (swapped email): ALREADY EXISTS, not a conflict"
+assert_contains "$(detail_of app_a)" "DISABLED, use restore" "disabled (swapped email): points to restore"
+assert_eq "disabled+$did@webfor.invalid" "$(fwp app_a user get "$did" --field=user_email)" "disabled (swapped email): email unchanged"
+assert_eq administrator "$(roles_sorted app_a logan.irish)" "disabled (swapped email): roles unchanged"
+assert_eq "$fp_b" "$(fp app_a)" "disabled (swapped email): database unchanged"
+
+# (c) marker for a different person's email: a real username conflict
+fwp app_a user meta update "$did" webfor_disabled "$(printf "$MARKER_TPL" someone.else@webfor.com)" --format=json >/dev/null
+fp_c="$(fp app_a)"
+run_tool "${ADD[@]}" --sites app_a --execute
+assert_eq "USERNAME CONFLICT" "$(status_of app_a)" "marker for another email: USERNAME CONFLICT"
+assert_eq "disabled+$did@webfor.invalid" "$(fwp app_a user get "$did" --field=user_email)" "marker mismatch: email unchanged"
+assert_eq administrator "$(roles_sorted app_a logan.irish)" "marker mismatch: roles unchanged"
+assert_eq "$fp_c" "$(fp app_a)" "marker mismatch: database unchanged"
+fixtures_reset
