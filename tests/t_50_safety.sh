@@ -1,7 +1,8 @@
 SHIM="$ROOT/tests/lib/wp-shim.sh"
 
 # --- the tool can never delete a user ------------------------------------------
-if grep -rn "user delete" "$ROOT/bin" "$ROOT/lib" >/dev/null; then bad "source contains 'user delete'"; else ok "source contains no 'user delete'"; fi
+hits="$(grep -rnE 'user[[:space:]]+delete|wp_delete_user|wpmu_delete_user' "$ROOT/bin" "$ROOT/lib")"
+if [ -n "$hits" ]; then bad "source can delete users: $hits"; else ok "source contains no user-delete call"; fi
 
 # --- failure isolation: a bad site never stops the run --------------------------
 fixtures_reset
@@ -17,7 +18,23 @@ fixtures_reset
 b="$(all_fp)"
 TOOL_STDIN=nope run_tool "${ADD[@]}" --all --execute
 assert_eq 2 "$RC" "wrong confirmation -> exit 2"
+assert_contains "$OUT" "aborted." "wrong confirmation says aborted"
 assert_eq "$b" "$(all_fp)" "wrong confirmation changed nothing"
+
+# --- canary: a password WP-CLI prints must never reach output or logs -------------------------
+# add: the shim prints a canary line before `user create --porcelain`; the tool must not echo it.
+fixtures_reset
+WP_BIN="$SHIM" SHIM_LEAK=addcanary run_tool "${ADD[@]}" --sites app_a,app_b --execute
+leak_text="$OUT$(cat "${TSV%.tsv}.log" "$TSV")"
+assert_eq CREATED "$(status_of app_a)" "add with leaky WP-CLI still creates app_a"
+assert_eq CREATED "$(status_of app_b)" "add with leaky WP-CLI still creates app_b"
+assert_not_contains "$leak_text" "CANARY-addcanary" "add never echoes a password printed by WP-CLI"
+# disable: reset-password output must be discarded.
+prep_logan
+WP_BIN="$SHIM" SHIM_LEAK=discanary run_tool "${DIS[@]}" --sites app_a --execute
+leak_text="$OUT$(cat "${TSV%.tsv}.log" "$TSV")"
+assert_eq DISABLED "$(status_of app_a)" "disable with leaky WP-CLI still succeeds"
+assert_not_contains "$leak_text" "CANARY-discanary" "disable never echoes a password printed by WP-CLI"
 
 # --- no secrets in output or logs ----------------------------------------------------------
 fixtures_reset
