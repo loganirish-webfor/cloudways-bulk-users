@@ -11,7 +11,7 @@ each other, starting from the same fresh fixtures as block 1.
 ```text
 DRY RUN: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-205810_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-212928_testsrv_add.log
 
 DRY RUN RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -51,7 +51,7 @@ DRY RUN: no changes were made.
 ```text
 EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-205815_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-212933_testsrv_add.log
 
 EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -68,7 +68,7 @@ Totals:
 ```text
 EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-205817_testsrv_add.log
+Log: /tmp/wwu-logs/20261007-212935_testsrv_add.log
 
 EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -85,14 +85,14 @@ Totals:
 ```text
 DRY RUN: disable logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-205819_testsrv_disable.log
+Log: /tmp/wwu-logs/20261007-212936_testsrv_disable.log
 
 DRY RUN RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | administrator | DISABLE | WOULD DISABLE - roles: administrator | -
 https://app_b.test (app: app_b) | Yes | Yes | administrator | DISABLE | WOULD DISABLE - roles: administrator | -
 (app: app_broken) | No | - | - | - | FAILED - WP-CLI error: Error establishing a database connection. This either means that the username and password information in your `wp-config.php` file is incorrect or that contact with the database server at `db` could  | -
-https://app_emailtaken.test (app: app_emailtaken) | Yes | No | - | NONE | NOT FOUND | -
+https://app_emailtaken.test (app: app_emailtaken) | Yes | Email under other login | - | NONE | EMAIL FOUND UNDER OTHER USERNAME - REVIEW REQUIRED - email on user #2; nothing changed | -
 https://app_exists.test (app: app_exists) | Yes | Yes | administrator | DISABLE | WOULD DISABLE - roles: administrator | -
 (app: app_multisite) | Yes | - | - | - | SKIPPED - multisite, handle manually | -
 (app: app_nopublic) | No | - | - | - | SKIPPED - no public_html | -
@@ -101,16 +101,17 @@ https://app_soleadmin.test (app: app_soleadmin) | Yes | Yes | administrator | NO
 https://app_usertaken.test (app: app_usertaken) | Yes | Yes | editor | NONE | EMAIL MISMATCH - REVIEW REQUIRED - username exists with a different email | -
 
 Totals:
+  EMAIL FOUND UNDER OTHER USERNAME: 1
   EMAIL MISMATCH: 1
   FAILED: 1
   LAST ADMIN: 1
-  NOT FOUND: 1
   SKIPPED: 3
   WOULD DISABLE: 3
   Applications processed: 10
 
 Needs manual review:
   - (app: app_broken): FAILED - WP-CLI error: Error establishing a database connection. This either means that the username and password information in your `wp-config.php` file is incorrect or that contact with the database server at `db` could 
+  - https://app_emailtaken.test (app: app_emailtaken): EMAIL FOUND UNDER OTHER USERNAME - REVIEW REQUIRED - email on user #2; nothing changed
   - (app: app_multisite): SKIPPED - multisite, handle manually
   - (app: app_nopublic): SKIPPED - no public_html
   - (app: app_notwp): SKIPPED - not WordPress
@@ -125,7 +126,7 @@ DRY RUN: no changes were made.
 ```text
 EXECUTE: disable logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-205825_testsrv_disable.log
+Log: /tmp/wwu-logs/20261007-212942_testsrv_disable.log
 
 EXECUTE RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -142,7 +143,7 @@ Totals:
 ```text
 DRY RUN: restore logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-205830_testsrv_restore.log
+Log: /tmp/wwu-logs/20261007-212947_testsrv_restore.log
 
 DRY RUN RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -161,7 +162,7 @@ DRY RUN: no changes were made.
 ```text
 EXECUTE: restore logan.irish <logan.irish@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-205832_testsrv_restore.log
+Log: /tmp/wwu-logs/20261007-212949_testsrv_restore.log
 
 EXECUTE RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS

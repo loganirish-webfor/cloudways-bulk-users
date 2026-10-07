@@ -76,3 +76,27 @@ assert_eq 1 "$(mk_rc "")" "marker_read: real user without a marker -> rc 1 (abse
 assert_eq 2 "$(mk_rc /tmp/wwu-silent-fail-255)" "marker_read: silent exit 255 -> rc 2 (error), not absent"
 assert_eq 2 "$(mk_rc /tmp/wwu-silent-fail-124)" "marker_read: silent exit 124 (timeout) -> rc 2 (error), not absent"
 rm -f /tmp/wwu-silent-fail-255 /tmp/wwu-silent-fail-124
+
+# --- a flag is not a value ---------------------------------------------------------
+fixtures_reset
+b="$(all_fp)"
+run_tool disable --username logan.irish --email logan.irish@webfor.com --sites app_a --server --execute
+assert_eq 2 "$RC" "--server followed by a flag -> exit 2"
+assert_contains "$OUT" "--server needs a value" "usage error names the flag"
+run_tool disable --username --email logan.irish@webfor.com --sites app_a
+assert_eq 2 "$RC" "--username followed by a flag -> exit 2"
+assert_eq "$b" "$(all_fp)" "flag-as-value changed nothing"
+
+# --- an unwritable log dir stops a live run before any site is touched ---------------
+fixtures_reset
+b="$(all_fp)"
+ro="$(mktemp -d)"; chmod 555 "$ro"
+lw_out="$(printf '\n' | bash "$ROOT/bin/webfor-wp-users" add --username logan.irish --email logan.irish@webfor.com \
+  --first-name Logan --last-name Irish --display-name "Logan Irish" \
+  --apps-root "$FX_ROOT" --log-dir "$ro" --server testsrv --sites app_a,app_b --execute 2>&1)"; lw_rc=$?
+chmod 755 "$ro"
+assert_eq 2 "$lw_rc" "unwritable log dir with --execute -> exit 2"
+assert_contains "$lw_out" "cannot create log files" "unwritable log dir: clear message"
+assert_eq "$b" "$(all_fp)" "unwritable log dir: no site changed"
+assert_eq 0 "$(ls "$ro" | wc -l | tr -d ' ')" "unwritable log dir: no log files created"
+rm -rf "$ro"

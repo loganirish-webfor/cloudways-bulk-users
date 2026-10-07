@@ -13,7 +13,7 @@ reset_site_state() {
 
 is_review_status() {
   case "$1" in
-    "EMAIL CONFLICT"|"USERNAME CONFLICT"|"EMAIL MISMATCH"|"LAST ADMIN") return 0 ;;
+    "EMAIL CONFLICT"|"USERNAME CONFLICT"|"EMAIL MISMATCH"|"LAST ADMIN"|"EMAIL FOUND UNDER OTHER USERNAME") return 0 ;;
   esac
   return 1
 }

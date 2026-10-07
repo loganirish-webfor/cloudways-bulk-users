@@ -38,6 +38,17 @@ remove_all_roles() { # ID
   return 0
 }
 
+# Step 2. `user reset-password --skip-email` replaces the password with a random one
+# (output discarded: WP-CLI may print it). wp_set_password() then sets a second random
+# password and clears user_activation_key, so a "Lost your password?" link requested
+# before the disable cannot be used afterwards. Neither call sends mail; the password
+# is generated inside PHP, never on argv or stdout. ID is digits (from lookup_user).
+scramble_password() { # ID
+  case "$1" in ''|*[!0-9]*) WP_ERR="Error: invalid user id"; WP_RC=1; return 1 ;; esac
+  wpx_nostdout user reset-password "$1" --skip-email || return 1
+  wpx_nostdout eval "wp_set_password( wp_generate_password( 32, true, true ), $1 );"
+}
+
 disable_steps() { # ID RESUME ORIG_EMAIL
   local id="$1" resume="$2" orig_email="$3"
   if [ "$resume" -eq 0 ]; then
@@ -48,7 +59,7 @@ disable_steps() { # ID RESUME ORIG_EMAIL
       record_result FAILED "marker not written, nothing changed: $(err_reason)"; return
     fi
   fi
-  try_step 2 "password"             wpx_nostdout user reset-password "$id" --skip-email
+  try_step 2 "password"             scramble_password "$id"
   try_step 3 "sessions"             wpx_nostdout user session destroy "$id" --all
   try_step 4 "application passwords" app_passwords_delete_all "$id"
   try_step 5 "roles"                remove_all_roles "$id"
@@ -67,7 +78,17 @@ op_disable_site() {
   local id rc resume=0 orig_email="" r n_admins
   R_WP="Yes"
   lookup_user "$USERNAME" || { record_result FAILED "user lookup: $(err_reason)"; return; }
-  if [ "$U_FOUND" -ne 1 ]; then R_EXISTS="No"; R_ACTION="NONE"; record_result "NOT FOUND" ""; return; fi
+  if [ "$U_FOUND" -ne 1 ]; then
+    R_ACTION="NONE"
+    # No such username. If a different account holds the employee's email, say so
+    # instead of reporting NOT FOUND (the person would keep access unnoticed).
+    lookup_user "$EMAIL" || { R_EXISTS="-"; record_result FAILED "email lookup: $(err_reason)"; return; }
+    if [ "$U_FOUND" -eq 1 ]; then
+      R_EXISTS="Email under other login"
+      record_result "EMAIL FOUND UNDER OTHER USERNAME" "email on user #$U_ID; nothing changed"; return
+    fi
+    R_EXISTS="No"; record_result "NOT FOUND" ""; return
+  fi
   id="$U_ID"; R_EXISTS="Yes"
   user_roles "$id" || { record_result FAILED "role lookup: $(err_reason)"; return; }
   R_ROLE="${UROLES:--}"

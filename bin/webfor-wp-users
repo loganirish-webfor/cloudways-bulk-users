@@ -44,7 +44,10 @@ APPS_ROOT="/home/master/applications"; LOG_DIR="./logs"
 ALLOWED_DOMAIN="webfor.com"; ANY_DOMAIN=0; SERVER_NAME="$(hostname)"
 TARGETS=(); LOG_FILE=""; TSV_FILE=""; MODE="DRY RUN"
 
-need_val() { [ $# -ge 2 ] || die_usage "$1 needs a value"; }
+need_val() {
+  [ $# -ge 2 ] || die_usage "$1 needs a value"
+  case "$2" in --*) die_usage "$1 needs a value" ;; esac   # the next flag is not a value
+}
 
 parse_args() {
   [ $# -ge 1 ] || { usage >&2; exit 2; }
@@ -147,7 +150,8 @@ init_run() {
   while [ -e "$LOG_FILE" ]; do n=$((n + 1)); LOG_FILE="$LOG_DIR/${stamp}_${server}_${OPERATION}-$n.log"; done
   TSV_FILE="${LOG_FILE%.log}.tsv"
   # umask only for these two files: it must not leak into wp child processes.
-  ( umask 077; : > "$LOG_FILE"; : > "$TSV_FILE" )
+  # The log is the only audit trail: if it cannot be created, stop before touching any site.
+  ( umask 077; : > "$LOG_FILE" && : > "$TSV_FILE" ) || die_usage "cannot create log files in $LOG_DIR"
 }
 
 process_site() {

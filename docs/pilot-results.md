@@ -27,6 +27,7 @@ note the path. A dry run and its live run are separate log files.
 - [ ] Re-run of the same live `add`: `ALREADY EXISTS` for every site; nothing changed. Log: ______
 
 ## Test 3: Disable
+- [ ] BEFORE the disable: request "Lost your password?" for the employee's real address on each pilot site (a controlled test, you receive the mail) and keep the link. After the disable confirm the link is dead (it says the key is invalid or expired)
 - [ ] Dry run reviewed: `WOULD DISABLE` on each pilot site. Log: ______
 - [ ] Live run: `DISABLED` on each pilot site, no `FAILED`, no warnings (or warnings explained: ______). Log: ______
 - [ ] Existing sessions ended (tested with a browser logged in as Logan before the run: ___)

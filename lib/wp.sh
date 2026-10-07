@@ -73,10 +73,11 @@ user_field() { # ID FIELD -> UF
 }
 
 # Roles come back as a JSON *string* with ", " separators ("administrator, editor"),
-# not an array; stripping [ ] " and spaces handles both forms.
+# not an array. Delete [ ] " and turn ", " into ","; spaces inside a slug are kept
+# (a slug like "weird role" is legal in WordPress and is refused later by valid_slug).
 user_roles() { # ID -> UROLES (comma-separated slugs, empty if none)
   wpx_try user get "$1" --field=roles --format=json || return 2
-  UROLES="$(printf '%s' "$WP_OUT" | tr -d '[]" ')"
+  UROLES="$(printf '%s' "$WP_OUT" | tr -d '[]"' | sed 's/, /,/g')"
 }
 
 has_role() { case ",$1," in *",$2,"*) return 0 ;; esac; return 1; }

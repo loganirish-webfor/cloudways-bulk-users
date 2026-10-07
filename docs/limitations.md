@@ -6,8 +6,25 @@
   admit a disabled account by other means. The tool cannot see them (it runs
   with plugins skipped). A must-use plugin that blocks login outright would
   close this and is out of scope for v1.
+- **Password-reset key.** A "Lost your password?" link requested before the
+  disable would otherwise stay usable for up to 24 hours. Step 2 replaces the
+  password with `wp user reset-password` and then `wp_set_password()`, which clear
+  the account's reset key. Measured in the sandbox (WordPress 7.1.3, WP-CLI
+  2.12.0): a key requested before the disable is rejected afterwards, even when a
+  later step fails. `reset-password` alone already did this there; the extra call
+  is for versions that might not (untested). During the pilot, request a link
+  before the disable and confirm it is dead.
+- **Plugin-owned credentials.** Credentials that a plugin ties to the user ID
+  (WooCommerce REST API keys, JWT-auth tokens, Jetpack or other SSO links) are
+  not touched, because plugins are skipped. They can still authenticate, but as a
+  user with no roles, so role removal is the backstop. Direct capabilities would
+  defeat that backstop, which is why the report warns about them. Review such
+  plugins on sites where the employee used them.
 - **Other credentials.** SSH, SFTP, database, hosting-panel, and third-party
   accounts are separate offboarding steps.
+- **WordPress in a subdirectory** of `public_html` (for example
+  `public_html/blog`) is not found: the site reports `SKIPPED - not WordPress`
+  and is never touched. Handle those by hand.
 - **Multisite** installs are skipped and reported (`SKIPPED - multisite, handle
   manually`). Handle them by hand.
 - **Direct capabilities.** A user with capabilities granted directly (not via
@@ -19,6 +36,11 @@
   passwords unavailable on this site` and the site is still marked `DISABLED`,
   not `FAILED`. **In that case the user's application passwords were not
   removed**: check the user's profile by hand.
+- **`NOT FOUND` exits 0.** A disable run where every site says `NOT FOUND`
+  (for example a mistyped username) succeeds with exit code 0. Read the table.
+  If a different account holds the employee's email, the result is instead
+  `EMAIL FOUND UNDER OTHER USERNAME - REVIEW REQUIRED` (exit code 1) and nothing
+  is changed. `restore` does not do this extra email lookup: it reports `NOT FOUND`.
 - **Only accounts this tool disabled** can be restored by it. Without the
   `webfor_disabled` marker the result is `NOT DISABLED` and the tool never
   guesses roles.
@@ -73,6 +95,10 @@
 - **Partial disable.** If any of steps 2 to 6 fails, the result is `FAILED -
   PARTIAL (...)`. Fix the cause and re-run `disable`; the `in_progress` marker
   makes it resume.
+- **Restore stuck in `PARTIAL`.** If the roles step keeps failing because a stored
+  role no longer exists on the site, create or fix the role by hand and re-run
+  `restore`. As a last resort restore roles and email by hand, then run
+  `wp user meta delete <ID> webfor_disabled` (see the runbook).
 - **Partial restore.** If `restore` fails after the email step, re-run it. The
   marker is kept until all steps succeed. A failed email step does not stop the
   roles step, so the account can briefly have its roles back with the

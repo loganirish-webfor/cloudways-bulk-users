@@ -29,6 +29,20 @@ are untested.
 
 Print the built-in help at any time: `bin/webfor-wp-users --help`.
 
+## Before you start
+
+On the server, as the user that will run the tool:
+
+- `wp --version`. The tool relies on `wp user application-password`, on `--exec`
+  with `WP_CLI::add_wp_hook` (to switch off WordPress's "Email Changed" and
+  "Password Changed" notices) and on `wp core is-installed --network`. The sandbox
+  used WP-CLI 2.12.0; older releases may lack these.
+- `command -v timeout`. Without it WP-CLI calls have no time limit (see Options).
+- `bash --version`. The sandbox ran GNU bash 5.3.9; the tool was also tried by a
+  reviewer under bash 3.2, and no other version has been tested.
+- Run the first dry run on **one** site (`--sites <one-folder>`), read the table,
+  and only then widen the list.
+
 ## The two rules
 
 1. **Dry run is the default.** Nothing changes unless you add `--execute`.
@@ -114,7 +128,14 @@ order (the step numbers appear in `PARTIAL` failure messages):
 
 1. Saves the original roles and email in user meta `webfor_disabled`, marked
    `in_progress`. If this fails, nothing else is changed.
-2. Replaces the password with a random one nobody knows (no email is sent).
+2. Replaces the password with a random one nobody knows (no email is sent): `wp
+   user reset-password --skip-email` with its output discarded, then
+   `wp_set_password()` with a second random password generated inside PHP (never on
+   the command line or in output). `wp_set_password()` also clears the account's
+   password-reset key, so a "Lost your password?" link requested before the
+   disable cannot be used afterwards. In the sandbox (WordPress 7.1.3, WP-CLI
+   2.12.0) `reset-password` alone already invalidated such a key; the second call
+   guarantees it on versions that might not (untested).
 3. Destroys every session.
 4. Deletes the user's application passwords (these log in to the REST API
    without the account password).
@@ -133,7 +154,8 @@ content is deleted (only the application passwords, step 4). Account deletion is
 | `WOULD DISABLE` | Dry run only. |
 | `DISABLED` | All steps succeeded. |
 | `ALREADY DISABLED` | Marker says complete. Nothing changed. |
-| `NOT FOUND` | No account with that username. Nothing changed. |
+| `NOT FOUND` | No account has that username and none has that email. Nothing changed. Exit code stays 0, so if a whole run says `NOT FOUND` read the table: it may mean a wrong username. |
+| `EMAIL FOUND UNDER OTHER USERNAME` | No account has that username, but a different account holds `--email` (USER EXISTS shows `Email under other login`, the detail gives the user id). Nothing changed. The person may still have access under that login: review by hand. |
 | `EMAIL MISMATCH` | The account has that username but another email (or the stored original email differs from `--email`). Not touched. |
 | `LAST ADMIN` | The account is the only user with the administrator role on the site. Not touched. |
 | `FAILED - unusual role name '...'; handle manually` | A stored role name contains unexpected characters. Nothing is changed. |
@@ -181,6 +203,14 @@ account can have its roles back with the neutralised email. The marker is kept
 until every step has succeeded, so **re-run the same restore command** to finish.
 Restore also works on an account whose disable stopped halfway.
 
+**Restore stuck in `PARTIAL` because a stored role no longer exists** on the site
+(the roles step fails every time): create the role again by hand, or fix the
+role name, and re-run `restore`. As a last resort, restore the roles and email by
+hand (`wp user add-role`, `wp user update --user_email=...`), then delete the
+marker so the tool stops treating the account as disabled:
+`wp --path=<site>/public_html --skip-plugins --skip-themes user meta delete <ID> webfor_disabled`.
+Use this only after confirming by hand that the account is back to its intended state.
+
 In restore's report row the ROLE column shows the roles the account had *before*
 the restore (normally `-`), not the restored ones. The restored roles are in the
 result detail.
@@ -195,7 +225,8 @@ SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 
 followed by Totals (one line per result, plus `Applications processed`) and a
 **Needs manual review** list. That list repeats every `FAILED`, `SKIPPED`,
-`EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH` and `LAST ADMIN` site with
+`EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH`, `LAST ADMIN` and
+`EMAIL FOUND UNDER OTHER USERNAME` site with
 its reason. `docs/example-report.md` shows real output from the sandbox.
 
 `SKIPPED` reasons: `no such application folder`, `no public_html`, `not
@@ -225,7 +256,7 @@ Warnings you may see:
 | Code | Meaning |
 |---|---|
 | 0 | No site `FAILED` and none needs review. `SKIPPED` sites are listed in the review list but do not change the exit code, and warnings affect neither, so read the list and the WARNINGS column. |
-| 1 | At least one `FAILED`, `EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH` or `LAST ADMIN`; or there were no applications to process. |
+| 1 | At least one `FAILED`, `EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH`, `LAST ADMIN` or `EMAIL FOUND UNDER OTHER USERNAME`; or there were no applications to process. |
 | 2 | Bad arguments, or the `ALL` confirmation was not given. |
 
 ### Logs

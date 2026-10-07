@@ -1,3 +1,24 @@
+# --- NOT FOUND is only for a site where neither the username nor the email exists ---
+fixtures_reset
+nf_before="$(fp app_a)$(fp app_b)"
+run_tool "${DIS[@]}" --sites app_a,app_b --execute
+assert_eq "NOT FOUND" "$(status_of app_a)" "neither username nor email exists: NOT FOUND"
+assert_eq "NOT FOUND" "$(status_of app_b)" "second such site: NOT FOUND"
+assert_eq 0 "$RC" "all NOT FOUND exits 0"
+assert_eq "$nf_before" "$(fp app_a)$(fp app_b)" "NOT FOUND changed nothing"
+
+# --- email held by a different username: review, never NOT FOUND --------------------
+fixtures_reset
+et_before="$(fp app_emailtaken)"
+run_tool "${DIS[@]}" --sites app_emailtaken --execute
+assert_eq "EMAIL FOUND UNDER OTHER USERNAME" "$(status_of app_emailtaken)" "email on another username: EMAIL FOUND UNDER OTHER USERNAME"
+assert_contains "$(detail_of app_emailtaken)" "email on user #" "detail names the account id"
+assert_contains "$(detail_of app_emailtaken)" "nothing changed" "detail says nothing changed"
+assert_eq "Email under other login" "$(tsv_col app_emailtaken 4)" "USER EXISTS column says the email is under another login"
+assert_contains "$OUT" "EMAIL FOUND UNDER OTHER USERNAME - REVIEW REQUIRED" "shown as REVIEW REQUIRED"
+assert_eq 1 "$RC" "email under another username exits 1"
+assert_eq "$et_before" "$(fp app_emailtaken)" "that site is unchanged even with --execute"
+
 prep_logan
 assert_eq yes "$(auth_ok app_a logan.irish known-pass-1)" "precondition: password works"
 assert_eq yes "$(app_pw_ok app_a logan.irish "$APP_PW_app_a")" "precondition: app password works"
@@ -8,7 +29,7 @@ run_tool "${DIS[@]}" --all
 assert_eq "$before" "$(all_fp)" "disable dry run leaves every database identical"
 assert_eq "WOULD DISABLE" "$(status_of app_a)" "app_a: WOULD DISABLE"
 assert_eq "WOULD DISABLE" "$(status_of app_b)" "app_b: WOULD DISABLE"
-assert_eq "NOT FOUND" "$(status_of app_emailtaken)" "no such user: NOT FOUND"
+assert_eq "EMAIL FOUND UNDER OTHER USERNAME" "$(status_of app_emailtaken)" "email held by another username: EMAIL FOUND UNDER OTHER USERNAME"
 assert_eq "EMAIL MISMATCH" "$(status_of app_usertaken)" "same username, different email: EMAIL MISMATCH"
 assert_eq "LAST ADMIN" "$(status_of app_soleadmin)" "only administrator: LAST ADMIN"
 assert_contains "$OUT" "LAST ADMIN - REVIEW REQUIRED" "last admin shows REVIEW REQUIRED"
@@ -19,10 +40,14 @@ run_tool "${DIS[@]}" --sites app_usertaken,app_soleadmin,app_emailtaken --execut
 assert_eq "$g_before" "$(fp app_usertaken)$(fp app_soleadmin)$(fp app_emailtaken)" "guarded sites unchanged"
 
 # --- live disable ----------------------------------------------------------------
+reset_key="$(fwp app_a eval '$u = get_user_by( "login", "logan.irish" ); echo get_password_reset_key( $u );')"
+key_state() { fwp app_a eval "\$r = check_password_reset_key( '$reset_key', 'logan.irish' ); echo is_wp_error( \$r ) ? 'dead' : 'valid';"; }
+assert_eq valid "$(key_state)" "precondition: a Lost-your-password key requested before the disable is valid"
 users_before="$(user_count app_a)"
 admin_before="$(fwp app_a user get admin --field=user_email)"
 run_tool "${DIS[@]}" --sites app_a,app_b --execute
 assert_eq 0 "$RC" "live disable exits 0"
+assert_eq dead "$(key_state)" "pre-existing password reset key is dead after disable"
 for a in app_a app_b; do
   id="$(eval "printf '%s' \"\$LID_$a\"")"
   pw="$(eval "printf '%s' \"\$APP_PW_$a\"")"
@@ -91,6 +116,20 @@ assert_eq '[]' "$(fwp app_a user session list "$id" --format=json)" "resume: ses
 assert_eq "disabled+$id@webfor.invalid" "$(fwp app_a user get "$id" --field=user_email)" "resume: email neutralised"
 assert_eq 0 "$(mail_count app_a)" "resume: no mail sent"
 
+# --- reset key is dead after step 2 already, even if the email step (6) fails -----
+prep_logan
+id="$LID_app_a"
+reset_key="$(fwp app_a eval '$u = get_user_by( "login", "logan.irish" ); echo get_password_reset_key( $u );')"
+key_state() { fwp app_a eval "\$r = check_password_reset_key( '$reset_key', 'logan.irish' ); echo is_wp_error( \$r ) ? 'dead' : 'valid';"; }
+assert_eq valid "$(key_state)" "precondition: reset key valid before the disable"
+WP_BIN="$ROOT/tests/lib/wp-shim.sh" SHIM_FAIL="--user_email=disabled+$id@webfor.invalid" run_tool "${DIS[@]}" --sites app_a --execute
+assert_contains "$(detail_of app_a)" "6 (email)" "setup: only the email step failed"
+assert_eq no "$(auth_ok app_a logan.irish known-pass-1)" "setup: password already replaced"
+assert_eq dead "$(key_state)" "reset key already dead although step 6 failed (step 2 closes it)"
+assert_eq 0 "$(mail_count app_a)" "partial disable sent no mail"
+run_tool "${DIS[@]}" --sites app_a --execute
+assert_eq DISABLED "$(status_of app_a)" "re-run finishes after the email step failure"
+
 # --- unusual role slug is refused before anything changes ---------------------
 prep_logan
 id="$LID_app_a"
@@ -117,6 +156,17 @@ glob_rc="$( cd "$gb" && . "$ROOT/lib/common.sh" && . "$ROOT/lib/wp.sh" && . "$RO
   && UROLES='' && split_uroles && printf '%s' "${#ROLE_LIST[@]}" )"
 assert_eq 0 "$glob_rc" "split_uroles on empty roles gives an empty list"
 rm -rf "$gb"
+
+# --- user_roles keeps spaces inside a role slug ---------------------------------
+rk="$(mktemp -d)"
+printf '#!/bin/sh\necho "\\"administrator, weird role\\""\n' > "$rk/roles"
+chmod +x "$rk/roles"
+rr="$( export WP_BIN="$rk/roles"; . "$ROOT/lib/common.sh"; . "$ROOT/lib/wp.sh"; . "$ROOT/lib/op_disable.sh"
+  SITE_PATH=/nonexistent; user_roles 1; split_uroles
+  valid_slug "${ROLE_LIST[1]}" && v=ok || v=refused
+  printf '%s|%s|%s' "$UROLES" "${#ROLE_LIST[@]}" "$v" )"
+assert_eq 'administrator,weird role|2|refused' "$rr" "user_roles keeps 'weird role' intact and valid_slug refuses it"
+rm -rf "$rk"
 
 # --- app_passwords_delete_all: classification of WP-CLI failures ----------------
 fk="$(mktemp -d)"
