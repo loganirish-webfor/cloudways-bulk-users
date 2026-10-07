@@ -62,6 +62,9 @@ fixtures_build() {
   sed -i "s/define( 'DB_PASSWORD', '[^']*' )/define( 'DB_PASSWORD', 'wrong' )/" \
     "$FX_ROOT/app_broken/public_html/wp-config.php"
   local a
+  # WordPress writes its default widget_* options on the first full load of a site.
+  # Load every site once before the snapshot so a later read-only run cannot look like a write.
+  for a in $APPS_WP; do fwp "$a" option get blogname >/dev/null; done
   for a in $APPS_WP; do fwp "$a" db export "$SNAP/$a.sql" >/dev/null; done
 }
 
