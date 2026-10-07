@@ -1,3 +1,4 @@
+ROOT="${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 FX_ROOT=/fixtures/applications
 CORE=/fixtures/.core
 SNAP=/fixtures/snap
@@ -73,14 +74,17 @@ fixtures_reset() {
   rm -rf "$LOGS"; mkdir -p "$LOGS"
 }
 
-fp() { # APP -> fingerprint of users, usermeta, posts, and non-transient options
-  fwp "$1" db query "SELECT * FROM wp_users ORDER BY ID; SELECT * FROM wp_usermeta ORDER BY umeta_id; SELECT ID,post_author,post_title,post_status FROM wp_posts ORDER BY ID; SELECT option_name,option_value FROM wp_options WHERE option_name NOT LIKE '%transient%' AND option_name <> 'cron' ORDER BY option_name;" 2>/dev/null | sha256sum | cut -d' ' -f1
+fp() { # APP -> fingerprint of users, usermeta, posts, and non-transient options. Fails loudly on query error.
+  local out
+  out="$(fwp "$1" db query "SELECT * FROM wp_users ORDER BY ID; SELECT * FROM wp_usermeta ORDER BY umeta_id; SELECT ID,post_author,post_title,post_status FROM wp_posts ORDER BY ID; SELECT option_name,option_value FROM wp_options WHERE option_name NOT LIKE '%transient%' AND option_name <> 'cron' ORDER BY option_name;" 2>/dev/null)" || out=""
+  if [ -z "$out" ]; then printf 'FP-ERROR-%s\n' "$1"; return 1; fi
+  printf '%s' "$out" | sha256sum | cut -d' ' -f1
 }
 all_fp() { local a out=""; for a in $APPS_WP; do out="$out$(fp "$a")"; done; printf '%s' "$out"; }
 
 mail_count() { local f="$FX_ROOT/$1/public_html/wp-content/mail.log"; if [ -f "$f" ]; then wc -l < "$f" | tr -d ' '; else echo 0; fi; }
 user_count() { fwp "$1" user list --format=count; }
-roles_sorted() { fwp "$1" user get "$2" --field=roles --format=json | tr -d '[]"' | tr ',' '\n' | sort | paste -sd, -; }
+roles_sorted() { fwp "$1" user get "$2" --field=roles --format=json | tr -d '[]" ' | tr ',' '\n' | sort | paste -sd, -; }
 
 run_tool() { # OP args... ; sets OUT RC TSV. Stdin comes from $TOOL_STDIN.
   local op="$1"; shift

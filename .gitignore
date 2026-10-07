@@ -2,3 +2,4 @@ logs/
 graft/
 .DS_Store
 .superpowers/
+.ignore

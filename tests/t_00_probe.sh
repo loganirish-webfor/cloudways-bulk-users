@@ -89,3 +89,23 @@ fwp app_broken core is-installed >/tmp/probe.out 2>/tmp/probe.err; rc=$?
 printf '  note: broken-db is-installed -> rc=%s stderr=%s\n' "$rc" "$(head -1 /tmp/probe.err)"
 fwp app_broken db query "SELECT 1" >/dev/null 2>&1; rc=$?
 assert_eq 1 "$rc" "db query fails on bad credentials"
+
+# roles_sorted: sorted, comma-joined, no spaces
+rid="$(fwp "$A" user create rolesprobe rolesprobe@webfor.com --role=editor --porcelain)"
+assert_eq "editor" "$(roles_sorted "$A" "$rid")" "roles_sorted: single role"
+fwp "$A" user add-role "$rid" administrator >/dev/null
+assert_eq "administrator,editor" "$(roles_sorted "$A" "$rid")" "roles_sorted: two roles sorted, no spaces"
+fwp "$A" user remove-role "$rid" administrator >/dev/null
+fwp "$A" user remove-role "$rid" editor >/dev/null
+assert_eq "" "$(roles_sorted "$A" "$rid")" "roles_sorted: no roles is empty"
+
+# fp: must be a real, discriminating, stable fingerprint
+fpa="$(fp app_a)"; fpb="$(fp app_b)"
+case "$fpa" in FP-ERROR*|'') bad "fp(app_a) returned '$fpa'" ;; *) ok "fp(app_a) returns a hash" ;; esac
+[ "$fpa" != "$fpb" ] && ok "fp differs between app_a and app_b" || bad "fp(app_a) equals fp(app_b)"
+assert_eq "$fpa" "$(fp app_a)" "fp is stable across consecutive calls with no write"
+fwp "$A" user meta update "$rid" fp_probe 1 >/dev/null
+[ "$fpa" != "$(fp app_a)" ] && ok "fp changes after a write" || bad "fp unchanged after a write"
+fpbad="$(fp app_broken)"; rc=$?
+assert_eq 1 "$rc" "fp fails (nonzero) when the query cannot run"
+assert_contains "$fpbad" "FP-ERROR-app_broken" "fp emits a sentinel on failure"
