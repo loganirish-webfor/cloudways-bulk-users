@@ -3,20 +3,34 @@
 # deleting anything. Reversible with op_restore_site via the marker usermeta.
 
 app_passwords_delete_all() { # ID. rc 0 also when none exist (WP-CLI exits 0 then) or the feature is unavailable.
+  local e
   wpx_nostdout user application-password delete "$1" --all && return 0
-  # Only the "feature absent" messages of old WP / WP-CLI count as success;
-  # any other failure (timeout, fatal, DB error) stays a failure.
-  case "$WP_ERR" in
-    *"not available"*|*"not a registered"*)
+  # Only the "feature absent" messages of old WP / WP-CLI count as success
+  # (WP < 5.6: "Requires WordPress 5.6 or greater."; old WP-CLI: subcommand not registered).
+  # Each pattern is tied to application passwords so an unrelated "not available"
+  # error cannot hide an unrevoked application password. Anything else is a failure.
+  e="$(lower "$WP_ERR")"
+  case "$e" in
+    *"requires wordpress 5.6"*|*"application password"*"not available"*|*"application-password"*"not a registered subcommand"*)
       R_WARN="${R_WARN:+$R_WARN; }application passwords unavailable on this site"; return 0 ;;
   esac
   return 1
 }
 
+# Split comma-separated UROLES into the array ROLE_LIST without word splitting or globbing.
+split_uroles() {
+  ROLE_LIST=()
+  IFS=, read -r -a ROLE_LIST <<< "$UROLES" || true
+}
+
 remove_all_roles() { # ID
   local id="$1" r
   user_roles "$id" || return 1
-  for r in ${UROLES//,/ }; do
+  split_uroles
+  for r in ${ROLE_LIST[@]+"${ROLE_LIST[@]}"}; do
+    valid_slug "$r" || { WP_ERR="Error: unusual role name '$r'"; WP_RC=1; return 1; }
+  done
+  for r in ${ROLE_LIST[@]+"${ROLE_LIST[@]}"}; do
     wpx_nostdout user remove-role "$id" "$r" || return 1
   done
   wpx_try user list-caps "$id" || return 1
@@ -72,7 +86,8 @@ op_disable_site() {
     if [ "$(lower "$orig_email")" != "$(lower "$EMAIL")" ]; then
       R_ACTION="NONE"; record_result "EMAIL MISMATCH" "username exists with a different email"; return
     fi
-    for r in ${UROLES//,/ }; do
+    split_uroles
+    for r in ${ROLE_LIST[@]+"${ROLE_LIST[@]}"}; do
       valid_slug "$r" || { R_ACTION="NONE"; record_result FAILED "unusual role name '$r'; handle manually"; return; }
     done
     if has_role "$UROLES" administrator; then
@@ -85,6 +100,6 @@ op_disable_site() {
   fi
 
   R_ACTION="DISABLE"; [ "$resume" -eq 1 ] && R_ACTION="DISABLE (resume)"
-  if [ "$EXECUTE" -ne 1 ]; then record_result "WOULD DISABLE" "roles: ${UROLES:-none}"; return; fi
+  if [ "$EXECUTE" -ne 1 ]; then record_result "WOULD DISABLE" "roles: $([ "$resume" -eq 1 ] && printf '%s' "${MK_ROLES:-none}" || printf '%s' "${UROLES:-none}")"; return; fi
   disable_steps "$id" "$resume" "$orig_email"
 }

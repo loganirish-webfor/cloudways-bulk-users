@@ -36,6 +36,7 @@ for a in app_a app_b; do
   assert_eq "$id" "$(fwp "$a" user get logan.irish --field=ID)" "$a: user record kept"
   assert_eq 1 "$(fwp "$a" post list --author="$id" --post_status=any --format=count)" "$a: authored content kept"
   assert_contains "$(fwp "$a" user meta get "$id" webfor_disabled --format=json)" '"state":"complete"' "$a: marker complete"
+  assert_contains "$(fwp "$a" user meta get "$id" webfor_disabled --format=json)" '"email":"logan.irish@webfor.com"' "$a: marker keeps the original email (restore needs it)"
   assert_eq 0 "$(mail_count "$a")" "$a: no mail sent"
 done
 assert_contains "$(fwp app_b user meta get "$LID_app_b" webfor_disabled --format=json)" '"roles":["administrator","editor"]' "app_b: both roles recorded"
@@ -62,3 +63,74 @@ assert_eq DISABLED "$(status_of app_a)" "mixed-case --email still matches the ac
 # --- email mismatch on an already-disabled account is refused -------------------
 run_tool disable --username logan.irish --email other.person@webfor.com --sites app_a --execute
 assert_eq "EMAIL MISMATCH" "$(status_of app_a)" "disable with the wrong email is refused"
+
+# --- resume: hand-built in_progress marker, role already removed ------------------
+prep_logan
+id="$LID_app_a"
+mk='{"at":"2026-01-02T03:04:05Z","server":"oldsrv","roles":["administrator"],"email":"logan.irish@webfor.com","state":"in_progress"}'
+fwp app_a user meta update "$id" webfor_disabled "$mk" --format=json >/dev/null
+fwp app_a user remove-role "$id" administrator >/dev/null
+r_before="$(fp app_a)"
+run_tool "${DIS[@]}" --sites app_a
+assert_eq "WOULD DISABLE" "$(status_of app_a)" "resume dry run: WOULD DISABLE"
+assert_eq "DISABLE (resume)" "$(tsv_col app_a 6)" "resume dry run: action is DISABLE (resume)"
+assert_contains "$(detail_of app_a)" "roles: administrator" "resume dry run reports the stored roles"
+assert_eq "$r_before" "$(fp app_a)" "resume dry run changed nothing"
+run_tool "${DIS[@]}" --sites app_a --execute
+assert_eq 0 "$RC" "resume live run exits 0"
+assert_eq DISABLED "$(status_of app_a)" "resume: DISABLED"
+r_mk="$(fwp app_a user meta get "$id" webfor_disabled --format=json)"
+assert_contains "$r_mk" '"state":"complete"' "resume: marker complete"
+assert_contains "$r_mk" '"at":"2026-01-02T03:04:05Z"' "resume: stored timestamp kept"
+assert_contains "$r_mk" '"server":"oldsrv"' "resume: stored server kept"
+assert_contains "$r_mk" '"roles":["administrator"]' "resume: stored roles kept (not the demoted current state)"
+assert_contains "$r_mk" '"email":"logan.irish@webfor.com"' "resume: stored email kept"
+assert_eq no "$(auth_ok app_a logan.irish known-pass-1)" "resume: old password rejected"
+assert_eq no "$(app_pw_ok app_a logan.irish "$APP_PW_app_a")" "resume: application password revoked"
+assert_eq '[]' "$(fwp app_a user session list "$id" --format=json)" "resume: sessions destroyed"
+assert_eq "disabled+$id@webfor.invalid" "$(fwp app_a user get "$id" --field=user_email)" "resume: email neutralised"
+assert_eq 0 "$(mail_count app_a)" "resume: no mail sent"
+
+# --- unusual role slug is refused before anything changes ---------------------
+prep_logan
+id="$LID_app_a"
+fwp app_a role create Weird_Role "Weird" >/dev/null
+fwp app_a user add-role "$id" Weird_Role >/dev/null
+w_before="$(fp app_a)"
+run_tool "${DIS[@]}" --sites app_a --execute
+assert_eq FAILED "$(status_of app_a)" "unusual role name: FAILED"
+assert_contains "$(detail_of app_a)" "unusual role name" "unusual role name: detail says so"
+assert_eq "$w_before" "$(fp app_a)" "unusual role name: nothing changed, no marker written"
+fwp app_a user meta get "$id" webfor_disabled >/dev/null 2>&1; w_rc=$?
+assert_eq 1 "$w_rc" "unusual role name: marker absent"
+assert_eq yes "$(auth_ok app_a logan.irish known-pass-1)" "unusual role name: password untouched"
+fwp app_a user remove-role "$id" Weird_Role >/dev/null
+fwp app_a role delete Weird_Role >/dev/null
+
+# --- role splitting never globs (glob bait) -----------------------------------
+gb="$(mktemp -d)"
+touch "$gb/editor" "$gb/administrator"
+glob_out="$( cd "$gb" && . "$ROOT/lib/common.sh" && . "$ROOT/lib/wp.sh" && . "$ROOT/lib/op_disable.sh" \
+  && UROLES='editor,*' && split_uroles && printf '%s|%s|%s' "${#ROLE_LIST[@]}" "${ROLE_LIST[0]}" "${ROLE_LIST[1]}" )"
+assert_eq '2|editor|*' "$glob_out" "split_uroles keeps '*' literal (no filename expansion)"
+glob_rc="$( cd "$gb" && . "$ROOT/lib/common.sh" && . "$ROOT/lib/wp.sh" && . "$ROOT/lib/op_disable.sh" \
+  && UROLES='' && split_uroles && printf '%s' "${#ROLE_LIST[@]}" )"
+assert_eq 0 "$glob_rc" "split_uroles on empty roles gives an empty list"
+rm -rf "$gb"
+
+# --- app_passwords_delete_all: classification of WP-CLI failures ----------------
+fk="$(mktemp -d)"
+printf '#!/bin/sh\necho "Error: Requires WordPress 5.6 or greater." >&2\nexit 1\n' > "$fk/old_wp"
+printf '#!/bin/sh\necho "Error: something else not available" >&2\nexit 1\n' > "$fk/other"
+printf '#!/bin/sh\necho "Error: Application passwords are not available for this site." >&2\nexit 1\n' > "$fk/appnotavail"
+printf '#!/bin/sh\necho "Error: Database error" >&2\nexit 1\n' > "$fk/dberr"
+chmod +x "$fk"/*
+apd() { # FAKE -> "rc|R_WARN"
+  ( export WP_BIN="$fk/$1"; . "$ROOT/lib/common.sh"; . "$ROOT/lib/wp.sh"; . "$ROOT/lib/op_disable.sh"
+    SITE_PATH=/nonexistent; R_WARN=""; app_passwords_delete_all 1; rc=$?; printf '%s|%s' "$rc" "$R_WARN" )
+}
+assert_eq '0|application passwords unavailable on this site' "$(apd old_wp)" "WP < 5.6: warning, step succeeds"
+assert_eq '0|application passwords unavailable on this site' "$(apd appnotavail)" "application passwords not available: warning, step succeeds"
+assert_eq '1|' "$(apd other)" "unrelated 'not available' error: step fails"
+assert_eq '1|' "$(apd dberr)" "other error: step fails"
+rm -rf "$fk"
