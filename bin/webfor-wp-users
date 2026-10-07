@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# webfor-wp-users: add, disable, or restore a Webfor employee across the
+# WordPress applications on a Cloudways server. Dry run unless --execute.
+# See docs/runbook.md.
+set -u
+set -o pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+for f in common wp report discover; do
+  # shellcheck disable=SC1090
+  . "$ROOT_DIR/lib/$f.sh"
+done
+for f in op_add op_disable op_restore; do
+  # shellcheck disable=SC1090
+  [ -f "$ROOT_DIR/lib/$f.sh" ] && . "$ROOT_DIR/lib/$f.sh"
+done
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  webfor-wp-users add     --username U --email E --first-name F --last-name L --display-name D
+                          [--role administrator] <targeting> [--execute] [--send-email]
+  webfor-wp-users disable --username U --email E <targeting> [--execute]
+  webfor-wp-users restore --username U --email E <targeting> [--execute]
+
+Targeting (exactly one):
+  --sites a,b,c      application folder names under the apps root
+  --all              every application (with --execute, asks you to type ALL)
+  [--exclude a,b]    optional, with either form
+
+Options:
+  --apps-root DIR      default /home/master/applications
+  --log-dir DIR        default ./logs
+  --allowed-domain D   default webfor.com; --email must be in this domain
+  --allow-any-domain   turn the domain guard off (not recommended)
+  --server NAME        label recorded in the log (default: hostname)
+  --execute            make changes. Without it, nothing is changed (dry run).
+USAGE
+}
+
+OPERATION=""; USERNAME=""; EMAIL=""; FIRST_NAME=""; LAST_NAME=""; DISPLAY_NAME=""
+ROLE="administrator"; SITES=""; ALL=0; EXCLUDE=""; EXECUTE=0; SEND_EMAIL=0
+APPS_ROOT="/home/master/applications"; LOG_DIR="./logs"
+ALLOWED_DOMAIN="webfor.com"; ANY_DOMAIN=0; SERVER_NAME="$(hostname)"
+TARGETS=(); LOG_FILE=""; TSV_FILE=""; MODE="DRY RUN"
+
+need_val() { [ $# -ge 2 ] || die_usage "$1 needs a value"; }
+
+parse_args() {
+  [ $# -ge 1 ] || { usage >&2; exit 2; }
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    add|disable|restore) OPERATION="$1"; shift ;;
+    *) die_usage "unknown operation: $1" ;;
+  esac
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --username)     need_val "$@"; USERNAME="$2"; shift 2 ;;
+      --email)        need_val "$@"; EMAIL="$2"; shift 2 ;;
+      --first-name)   need_val "$@"; FIRST_NAME="$2"; shift 2 ;;
+      --last-name)    need_val "$@"; LAST_NAME="$2"; shift 2 ;;
+      --display-name) need_val "$@"; DISPLAY_NAME="$2"; shift 2 ;;
+      --role)         need_val "$@"; ROLE="$2"; shift 2 ;;
+      --sites)        need_val "$@"; SITES="$2"; shift 2 ;;
+      --exclude)      need_val "$@"; EXCLUDE="$2"; shift 2 ;;
+      --apps-root)    need_val "$@"; APPS_ROOT="$2"; shift 2 ;;
+      --log-dir)      need_val "$@"; LOG_DIR="$2"; shift 2 ;;
+      --allowed-domain) need_val "$@"; ALLOWED_DOMAIN="$2"; shift 2 ;;
+      --server)       need_val "$@"; SERVER_NAME="$2"; shift 2 ;;
+      --all)          ALL=1; shift ;;
+      --execute)      EXECUTE=1; shift ;;
+      --send-email)   SEND_EMAIL=1; shift ;;
+      --allow-any-domain) ANY_DOMAIN=1; shift ;;
+      -h|--help)      usage; exit 0 ;;
+      *) die_usage "unknown option: $1" ;;
+    esac
+  done
+}
+
+check_folder_list() { # label list
+  local item
+  [ -z "$2" ] && return 0
+  IFS=',' read -r -a _items <<< "$2"
+  for item in "${_items[@]}"; do
+    valid_folder "$item" || die_usage "invalid folder name in $1: '$item'"
+  done
+}
+
+validate_args() {
+  [ -n "$USERNAME" ] || die_usage "--username is required"
+  valid_username "$USERNAME" || die_usage "--username must match [a-z0-9._-]+ and not be all digits"
+  [ -n "$EMAIL" ] || die_usage "--email is required"
+  valid_email "$EMAIL" || die_usage "--email is not a valid email address"
+  if [ "$ANY_DOMAIN" -ne 1 ] && ! email_in_domain "$EMAIL" "$ALLOWED_DOMAIN"; then
+    die_usage "--email must be in @$ALLOWED_DOMAIN (or pass --allow-any-domain)"
+  fi
+  if [ "$OPERATION" = add ]; then
+    [ -n "$FIRST_NAME" ] && [ -n "$LAST_NAME" ] && [ -n "$DISPLAY_NAME" ] \
+      || die_usage "add requires --first-name, --last-name and --display-name"
+    valid_slug "$ROLE" || die_usage "--role must be a role slug"
+  elif [ "$SEND_EMAIL" -eq 1 ]; then
+    die_usage "--send-email only applies to add"
+  fi
+  if [ "$ALL" -eq 1 ] && [ -n "$SITES" ]; then die_usage "use either --sites or --all, not both"; fi
+  if [ "$ALL" -ne 1 ] && [ -z "$SITES" ]; then die_usage "one of --sites or --all is required"; fi
+  check_folder_list --sites "$SITES"
+  check_folder_list --exclude "$EXCLUDE"
+  [ "$EXECUTE" -eq 1 ] && MODE="EXECUTE"
+  return 0
+}
+
+select_targets() {
+  local d t x skip out=()
+  TARGETS=()
+  if [ "$ALL" -eq 1 ]; then
+    while IFS= read -r d; do TARGETS+=("$d"); done < <(discover_apps)
+  else
+    IFS=',' read -r -a _sel <<< "$SITES"
+    for d in "${_sel[@]}"; do TARGETS+=("$d"); done
+  fi
+  if [ -n "$EXCLUDE" ]; then
+    IFS=',' read -r -a _exc <<< "$EXCLUDE"
+    for t in ${TARGETS[@]+"${TARGETS[@]}"}; do
+      skip=0
+      for x in "${_exc[@]}"; do [ "$t" = "$x" ] && skip=1; done
+      [ "$skip" -eq 0 ] && out+=("$t")
+    done
+    if [ ${#out[@]} -eq 0 ]; then TARGETS=(); else TARGETS=("${out[@]}"); fi
+  fi
+}
+
+confirm_all() {
+  [ "$ALL" -eq 1 ] && [ "$EXECUTE" -eq 1 ] || return 0
+  local ans=""
+  printf 'About to %s %s on ALL %d applications on %s. Type ALL to continue: ' \
+    "$OPERATION" "$USERNAME" "${#TARGETS[@]}" "$SERVER_NAME" >&2
+  read -r ans || true
+  [ "$ans" = "ALL" ] || { echo "aborted." >&2; exit 2; }
+}
+
+init_run() {
+  umask 077
+  mkdir -p "$LOG_DIR" || die_usage "cannot create log dir $LOG_DIR"
+  local stamp server n=1
+  stamp="$(date '+%Y%m%d-%H%M%S')"
+  server="$(printf '%s' "$SERVER_NAME" | tr -c 'A-Za-z0-9._-' '_')"
+  LOG_FILE="$LOG_DIR/${stamp}_${server}_${OPERATION}.log"
+  while [ -e "$LOG_FILE" ]; do n=$((n + 1)); LOG_FILE="$LOG_DIR/${stamp}_${server}_${OPERATION}-$n.log"; done
+  TSV_FILE="${LOG_FILE%.log}.tsv"
+  : > "$LOG_FILE"; : > "$TSV_FILE"
+}
+
+process_site() {
+  SITE_FOLDER="$1"
+  reset_site_state
+  local before=${#RES_STATUS[@]}
+  if ! validate_site; then record_result "$V_STATUS" "$V_DETAIL"; return; fi
+  if declare -F "op_${OPERATION}_site" >/dev/null; then
+    "op_${OPERATION}_site"
+  else
+    record_result FAILED "operation '$OPERATION' is not implemented"
+  fi
+  [ ${#RES_STATUS[@]} -gt "$before" ] || record_result FAILED "internal error: no result recorded"
+}
+
+main() {
+  parse_args "$@"
+  validate_args
+  select_targets
+  if [ ${#TARGETS[@]} -eq 0 ]; then echo "error: no applications to process" >&2; exit 1; fi
+  confirm_all
+  init_run
+  say "$MODE: $OPERATION $USERNAME <$EMAIL> server=$SERVER_NAME"
+  say "Applications to process: ${#TARGETS[@]}"
+  say "Log: $LOG_FILE"
+  local i=0 n=${#TARGETS[@]} f
+  for f in "${TARGETS[@]}"; do
+    i=$((i + 1)); printf '[%d/%d] %s\n' "$i" "$n" "$f" >&2
+    process_site "$f"
+  done
+  print_report
+  run_exit_code
+  exit $?
+}
+
+main "$@"
