@@ -387,3 +387,7 @@ docs/
 ```
 
 The design spec ([docs/superpowers/specs](docs/superpowers/specs/2026-10-07-webfor-wp-users-design.md)) explains why the tool works the way it does.
+
+## License
+
+MIT. See [LICENSE](LICENSE). This tool changes user accounts on live websites, so test it on a few sites before you rely on it, as described in [Running the pilot](#running-the-pilot).
