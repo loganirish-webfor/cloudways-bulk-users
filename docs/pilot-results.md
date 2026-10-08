@@ -1,8 +1,54 @@
 # Pilot results
 
 The blanks below are intentional. Whoever runs the pilot fills them in, then
-A second person reviews the file before the tool is used on more than the pilot sites.
+a second person reviews the file before the tool is used on more than the pilot sites.
 Follow `docs/runbook.md`. Use `--sites` for every command, never `--all`.
+
+## Initial live test (already done): one site, throwaway Editor account
+
+Date: 2026-10-08. Tool code: commit `099968f` (later commits change only docs).
+The tool was copied to `/tmp` and run over SSH as an application user, not
+`master`. Everything below happened on one live WordPress site with 12 users, all
+Administrators, running an SMTP plugin, Jetpack and WP 2FA. The server had WP-CLI
+2.12.0, bash 5.2.15 and `timeout`.
+
+The test account was a throwaway Editor (`tool.test`) on a `+tooltest` address in
+the tester's own mailbox. No existing user was changed and no Administrator was
+created, disabled or demoted.
+
+| Step | Result |
+|---|---|
+| `add` dry run | `WOULD CREATE` |
+| `add --execute` | `CREATED - user #16`. Users went from 12 to 13. A fingerprint of the other 12 users (ID, login, email, roles) was identical before and after. The tester's own Administrator account was unchanged. |
+| `add` again | `ALREADY EXISTS`. Nothing created. |
+| `disable` dry run, then live | `WOULD DISABLE`, then `DISABLED` with no warnings. |
+| Server state after `disable` | No roles, no capabilities, email `disabled+<ID>@webfor.invalid`, 0 login sessions (was 1), the saved note holds the original role and email, and a reset key requested before the disable was gone. |
+| `disable` again | `ALREADY DISABLED`. Nothing changed. |
+| Browser: old password | Rejected. |
+| Browser: reset link saved before the disable (clicked before requesting a new one) | Invalid. |
+| Browser: window that was logged in | Signed out. WordPress showed its standard "log in again" box over the old page. |
+| New reset request after the disable | WordPress showed "Check your email for the confirmation link", and no email arrived. The server addressed the reset to the `.invalid` address. |
+| Real mailbox | No "Email Changed" or "Password Changed" notice. |
+| `restore` dry run, then live | `WOULD RESTORE`, then `RESTORED`. Role and email back, saved note removed, password still unusable (as designed). |
+| Cleanup | Tool removed from the server. The throwaway account was deleted by hand in wp-admin. The user count (12) and the fingerprint matched the baseline taken before the test. The password manager did not save the account. |
+
+What the live test found:
+
+- Cloudways' `wp-config.php` loads `wp-salt.php` by a relative path, so WP-CLI failed
+  on every site until the tool was changed to run from inside the site folder.
+  Fixed (commit `099968f`, test in `tests/t_12_cwd.sh`).
+- Application-user logins have a read-only home folder and a silent `scp`. The
+  runbook now explains how to copy the tool through `/tmp`.
+- In the first round of the disable test, an email arrived after the disable. A
+  second round, run in a stricter order, produced none. The cause of the first
+  email was not confirmed. The likeliest explanation is delayed mail from a reset
+  requested before the disable, because the site sends mail through an SMTP
+  plugin. Watch for this during the pilot.
+
+Not covered yet: the Administrator role live (including `LAST ADMIN`), more than
+one site in a run, `--all`, accounts whose username differs from the one given,
+sites with single sign-on plugins, and a server where the login is `master`.
+Dry runs only were done on a second server.
 
 Run by: ______  Date: ______  Tool version (git commit): ______
 SSH login user (`master` or an application user): ______
@@ -28,7 +74,7 @@ note the path. A dry run and its live run are separate log files.
 - [ ] Re-run of the same live `add`: `ALREADY EXISTS` for every site; nothing changed. Log: ______
 
 ## Test 3: Disable
-- [ ] BEFORE the disable: request "Lost your password?" for the employee's real address on each pilot site (a controlled test, you receive the mail) and keep the link. After the disable confirm the link is dead (it says the key is invalid or expired)
+- [ ] BEFORE the disable: request "Lost your password?" for the employee's real address on each pilot site (a controlled test, you receive the mail) and keep the link (use a private window, see the runbook's "Checking a disable in a browser"). After the disable, click that saved link FIRST, before requesting any new reset, and confirm it is dead (it says the key is invalid or expired)
 - [ ] Dry run reviewed: `WOULD DISABLE` on each pilot site. Log: ______
 - [ ] Live run: `DISABLED` on each pilot site, no `FAILED`, no warnings (or warnings explained: ______). Log: ______
 - [ ] Existing sessions ended (tested with a browser logged in as Jane before the run: ___)

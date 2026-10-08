@@ -213,6 +213,39 @@ command**: it sees the `in_progress` marker and repeats the steps (they are safe
 to repeat). The `LAST ADMIN` check is skipped on a resume. In the table a
 resumed site shows ACTION `DISABLE (resume)`.
 
+### Checking a disable in a browser
+
+The disable only counts once a real browser confirms it. A few things from the
+first live test will save you confusion:
+
+- **Use two windows.** Keep your normal window logged in as the test account. Use
+  a private window (Chrome "Incognito", Safari "Private", Edge "InPrivate") for the
+  reset email and the saved link. In the logged-in window WordPress skips the
+  "Lost your password?" page and goes straight to the dashboard.
+- **Order matters.** WordPress keeps only one reset key per account, and any new
+  reset request replaces it. Request a reset *before* the disable and keep that
+  email. After the disable, click that saved link **first**. It should say the link
+  is invalid or expired. Only then request a new reset. If you request a new one
+  first, the old link is dead anyway and the test proves nothing.
+- **"Check your email for the confirmation link" is not a failure.** WordPress
+  shows it for every reset request, even for accounts that do not exist or cannot
+  receive mail, so strangers cannot tell which accounts exist. The real check is
+  whether an email arrives. For a disabled account none should, because the
+  address is `disabled+<ID>@webfor.invalid`.
+- **A logged-in tab shows a login box after the disable.** An already-open wp-admin
+  tab shows WordPress's standard "log in again" box over the old page. That box
+  gives no access. Reload the tab and you land on the login screen.
+- **Mail can be late.** If a site sends mail through an SMTP plugin, an email from
+  a reset requested before the disable can arrive after it. Give it ten minutes
+  and look at the time on the email before you call it a failure.
+- **Do not let your password manager save the test account.** Choose "Not now" when
+  it offers.
+- **Usernames differ between sites.** Your own account may be called `logan` on one
+  site and `logan.irish` on another. The tool matches the username and the email
+  together, so a different username is reported as `EMAIL CONFLICT` (for `add`) or
+  `EMAIL FOUND UNDER OTHER USERNAME` (for `disable`) and nothing is changed. Use
+  the username the site actually has.
+
 ## Restore an employee
 
 ```bash

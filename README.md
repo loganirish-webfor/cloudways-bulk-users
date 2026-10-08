@@ -6,7 +6,7 @@ Say you manage 40 WordPress sites on a Cloudways server and a new person joins y
 
 The command is called `webfor-wp-users`. It was built for Webfor's setup, and it works for any team that runs WordPress on Cloudways and has SSH access to the server.
 
-> **Status:** The tool passes its full test suite (318 checks) in a Docker sandbox. Dry runs (which change nothing) have worked on two live Cloudways servers. A real `--execute` run has not been tried on a live server yet. The first live run should be a small pilot on two or three sites. See [Running the pilot](#running-the-pilot).
+> **Status:** The tool passes its full test suite (318 checks) in a Docker sandbox. Dry runs (which change nothing) have worked on two live Cloudways servers, and a real `--execute` run (add, disable, restore with a throwaway Editor account) worked on one live site. Administrator accounts and multi-site runs are not yet tried live. The next step is a small pilot on two or three sites. See [Running the pilot](#running-the-pilot).
 
 ---
 
