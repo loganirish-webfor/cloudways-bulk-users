@@ -162,7 +162,7 @@ rk="$(mktemp -d)"
 printf '#!/bin/sh\necho "\\"administrator, weird role\\""\n' > "$rk/roles"
 chmod +x "$rk/roles"
 rr="$( export WP_BIN="$rk/roles"; . "$ROOT/lib/common.sh"; . "$ROOT/lib/wp.sh"; . "$ROOT/lib/op_disable.sh"
-  SITE_PATH=/nonexistent; user_roles 1; split_uroles
+  SITE_PATH=/tmp; user_roles 1; split_uroles
   valid_slug "${ROLE_LIST[1]}" && v=ok || v=refused
   printf '%s|%s|%s' "$UROLES" "${#ROLE_LIST[@]}" "$v" )"
 assert_eq 'administrator,weird role|2|refused' "$rr" "user_roles keeps 'weird role' intact and valid_slug refuses it"
@@ -177,7 +177,7 @@ printf '#!/bin/sh\necho "Error: Database error" >&2\nexit 1\n' > "$fk/dberr"
 chmod +x "$fk"/*
 apd() { # FAKE -> "rc|R_WARN"
   ( export WP_BIN="$fk/$1"; . "$ROOT/lib/common.sh"; . "$ROOT/lib/wp.sh"; . "$ROOT/lib/op_disable.sh"
-    SITE_PATH=/nonexistent; R_WARN=""; app_passwords_delete_all 1; rc=$?; printf '%s|%s' "$rc" "$R_WARN" )
+    SITE_PATH=/tmp; R_WARN=""; app_passwords_delete_all 1; rc=$?; printf '%s|%s' "$rc" "$R_WARN" )
 }
 assert_eq '0|application passwords unavailable on this site' "$(apd old_wp)" "WP < 5.6: warning, step succeeds"
 assert_eq '0|application passwords unavailable on this site' "$(apd appnotavail)" "application passwords not available: warning, step succeeds"

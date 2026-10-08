@@ -14,12 +14,19 @@ MARKER_KEY="webfor_disabled"
 # WordPress loads, so add_filter() would fatal; WP_CLI::add_wp_hook is correct.
 WPX_EXEC='WP_CLI::add_wp_hook("send_email_change_email","__return_false");WP_CLI::add_wp_hook("send_password_change_email","__return_false");'
 
+# Cloudways' wp-config.php loads wp-salt.php by a RELATIVE path (require('wp-salt.php')),
+# which only resolves when the current folder is the site root (found on two live
+# servers; see tests/t_12_cwd.sh). So every call runs from inside the site folder.
+# The subshell leaves the caller's own folder unchanged.
 wpx() {
-  if [ -n "$TIMEOUT_BIN" ]; then
-    "$TIMEOUT_BIN" "$WP_TIMEOUT" "$WP_BIN" --path="$SITE_PATH" --skip-plugins --skip-themes --exec="$WPX_EXEC" "$@" </dev/null
-  else
-    "$WP_BIN" --path="$SITE_PATH" --skip-plugins --skip-themes --exec="$WPX_EXEC" "$@" </dev/null
-  fi
+  (
+    cd "$SITE_PATH" || exit 126
+    if [ -n "$TIMEOUT_BIN" ]; then
+      "$TIMEOUT_BIN" "$WP_TIMEOUT" "$WP_BIN" --path="$SITE_PATH" --skip-plugins --skip-themes --exec="$WPX_EXEC" "$@" </dev/null
+    else
+      "$WP_BIN" --path="$SITE_PATH" --skip-plugins --skip-themes --exec="$WPX_EXEC" "$@" </dev/null
+    fi
+  )
 }
 
 # wpx_try: run, capture stdout in WP_OUT, stderr in WP_ERR, status in WP_RC.
