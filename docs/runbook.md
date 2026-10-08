@@ -221,7 +221,10 @@ first live test will save you confusion:
 - **Use two windows.** Keep your normal window logged in as the test account. Use
   a private window (Chrome "Incognito", Safari "Private", Edge "InPrivate") for the
   reset email and the saved link. In the logged-in window WordPress skips the
-  "Lost your password?" page and goes straight to the dashboard.
+  "Lost your password?" page and goes straight to the dashboard. **A new normal
+  window is not private.** It shares your logins and cookies with the first window,
+  so it can mix up which email and link belong to which request. If you cannot open
+  a private window, use a second browser.
 - **Order matters.** WordPress keeps only one reset key per account, and any new
   reset request replaces it. Request a reset *before* the disable and keep that
   email. After the disable, click that saved link **first**. It should say the link

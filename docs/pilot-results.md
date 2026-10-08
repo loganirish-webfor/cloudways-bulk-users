@@ -40,10 +40,14 @@ What the live test found:
 - Application-user logins have a read-only home folder and a silent `scp`. The
   runbook now explains how to copy the tool through `/tmp`.
 - In the first round of the disable test, an email arrived after the disable. A
-  second round, run in a stricter order, produced none. The cause of the first
-  email was not confirmed. The likeliest explanation is delayed mail from a reset
-  requested before the disable, because the site sends mail through an SMTP
-  plugin. Watch for this during the pilot.
+  second round, run in a stricter order and in a truly private window, produced
+  none. The cause of the first email was not confirmed. The tester suspects the
+  second window in round 1 was a normal window of the same browser, not a private
+  one, so it shared the logged-in cookies and the emails and links from the two
+  requests could have been mixed up. Delayed mail from a reset requested before the
+  disable is another possibility, because the site sends mail through an SMTP
+  plugin. The server did record a reset after the disable in round 1, so a
+  post-disable email cannot be ruled out. Watch for this during the pilot.
 
 Not covered yet: the Administrator role live (including `LAST ADMIN`), more than
 one site in a run, `--all`, accounts whose username differs from the one given,
