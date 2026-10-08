@@ -1,6 +1,8 @@
 # Webfor WP Users: bulk employee access for Cloudways WordPress sites
 
-Status: draft for review. Date: 2026-10-07.
+Status: approved 2026-10-07; amended 2026-10-08 to match the built tool
+(disable also looks up the email, and the password-reset key is cleared).
+Date: 2026-10-07.
 
 ## 1. Purpose
 
@@ -127,7 +129,8 @@ exactly (see section 11). Nothing is stored or logged.
 
 | Condition | Status |
 |---|---|
-| Username not found | `NOT FOUND` (no change) |
+| Username not found, and `--email` is not on any account | `NOT FOUND` (no change) |
+| Username not found, but `--email` belongs to an account with a different username | `EMAIL FOUND UNDER OTHER USERNAME - REVIEW REQUIRED` (no change) |
 | Username exists, email differs from `--email` | `EMAIL MISMATCH - REVIEW REQUIRED` |
 | Marker already present with `state=complete` | `ALREADY DISABLED` (no change) |
 | Target is the only user with the administrator role | `LAST ADMIN - REVIEW REQUIRED` |
@@ -145,7 +148,9 @@ can be resumed:
    original email, `state=in_progress`). If this fails, stop; nothing else is
    changed.
 2. Scramble the password: `wp user reset-password <id> --skip-email`
-   with output discarded. The result is a random hash nobody knows.
+   with output discarded, then `wp_set_password()` with a second random
+   password generated inside PHP. The result is a random hash nobody knows,
+   and any password-reset key requested before the disable is cleared.
 3. `wp user session destroy <id> --all`.
 4. `wp user application-password delete <id> --all` (these authenticate to
    the REST API independently of the login password). If the site's

@@ -38,8 +38,8 @@ On the server, as the user that will run the tool:
   "Password Changed" notices) and on `wp core is-installed --network`. The sandbox
   used WP-CLI 2.12.0; older releases may lack these.
 - `command -v timeout`. Without it WP-CLI calls have no time limit (see Options).
-- `bash --version`. The sandbox ran GNU bash 5.3.9; the tool was also tried by a
-  reviewer under bash 3.2, and no other version has been tested.
+- `bash --version`. The sandbox ran GNU bash 5.3.9; no other version has been
+  tested.
 - Run the first dry run on **one** site (`--sites <one-folder>`), read the table,
   and only then widen the list.
 
@@ -135,7 +135,7 @@ order (the step numbers appear in `PARTIAL` failure messages):
    password-reset key, so a "Lost your password?" link requested before the
    disable cannot be used afterwards. In the sandbox (WordPress 7.1.3, WP-CLI
    2.12.0) `reset-password` alone already invalidated such a key; the second call
-   guarantees it on versions that might not (untested).
+   is there in case other versions behave differently (untested).
 3. Destroys every session.
 4. Deletes the user's application passwords (these log in to the REST API
    without the account password).
@@ -257,7 +257,7 @@ Warnings you may see:
 |---|---|
 | 0 | No site `FAILED` and none needs review. `SKIPPED` sites are listed in the review list but do not change the exit code, and warnings affect neither, so read the list and the WARNINGS column. |
 | 1 | At least one `FAILED`, `EMAIL CONFLICT`, `USERNAME CONFLICT`, `EMAIL MISMATCH`, `LAST ADMIN` or `EMAIL FOUND UNDER OTHER USERNAME`; or there were no applications to process. |
-| 2 | Bad arguments, or the `ALL` confirmation was not given. |
+| 2 | Bad arguments, the `ALL` confirmation was not given, or the log files could not be created (for example an unwritable `--log-dir`). Nothing is changed in any of these cases. |
 
 ### Logs
 
