@@ -121,6 +121,13 @@
   still has direct capabilities`) affect neither the exit code nor the review
   list, and the site is still reported `DISABLED`. Read the review list and the
   WARNINGS column; do not rely on the exit code alone.
+- **Application-user logins.** The tool was tried (dry runs only) on two Cloudways
+  servers while logged in as an application user, not `master`. It worked on the
+  one app that user owns. Other apps on the same server were not tried; the
+  login may not be allowed to read them. See the runbook for how to copy the tool
+  to such a server (`scp` and the home folder did not work there).
+- **Live runs.** `--execute` has only been run in the Docker sandbox. Dry runs
+  on two live servers changed nothing (checked afterwards).
 - **Tested versions.** Behaviour was measured against WP-CLI 2.12.0 and
   WordPress 7.1.3 in the Docker sandbox (the WP-CLI findings are in the header of
   `tests/t_00_probe.sh`); the sandbox ran GNU bash 5.3.9 and other bash versions

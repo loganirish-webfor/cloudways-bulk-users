@@ -5,6 +5,7 @@ A second person reviews the file before the tool is used on more than the pilot 
 Follow `docs/runbook.md`. Use `--sites` for every command, never `--all`.
 
 Run by: ______  Date: ______  Tool version (git commit): ______
+SSH login user (`master` or an application user): ______
 Server: ______  WP-CLI version (`wp --version`): ______
 Sites used (2-3, Webfor-managed, folder names): ______
 WordPress version of each site: ______

@@ -22,12 +22,52 @@ chmod +x ~/webfor-wp-users/bin/webfor-wp-users
 ```
 
 Check WP-CLI works for your user: `wp --info`. The tool calls `wp` from your
-`PATH` (set `WP_BIN=/path/to/wp` to use another binary). It was tested only in
-the Docker sandbox (GNU bash 5.3.9, WP-CLI 2.12.0, WordPress 7.1.3), not on a
-Cloudways server. Check the server with `bash --version`; other bash versions
-are untested.
+`PATH` (set `WP_BIN=/path/to/wp` to use another binary). It was tested in the
+Docker sandbox (GNU bash 5.3.9, WP-CLI 2.12.0, WordPress 7.1.3) and in dry runs
+(no changes) on two live Cloudways servers, bash 5.2.15 and WP-CLI 2.12.0, logged
+in as an application user. Live `--execute` runs have not been tried on a real
+server yet. Check the server with `bash --version`; other bash versions are
+untested.
 
 Print the built-in help at any time: `bin/webfor-wp-users --help`.
+
+### If you log in as an application user (not `master`)
+
+On two Cloudways servers the SSH login was an application user (its name is also
+the folder name of one app, for example `abcdefghij`), not `master`. There:
+
+- The home folder is not writable, so `mkdir ~/webfor-wp-users` fails.
+- `scp` finished without an error but copied nothing. Plain `ssh` commands work.
+- `/tmp` is writable and is not served by the website.
+- `/home/master/applications` was readable, so the tool listed every app, but the
+  dry runs were done only on the app the login owns. Whether the tool can read the
+  other apps from that login is untested; expect `FAILED` or `SKIPPED` rows there
+  and read them.
+
+Copy the tool through `ssh` and `tar` into `/tmp` instead. On macOS the
+`COPYFILE_DISABLE=1` part keeps `tar` from adding Apple metadata:
+
+```bash
+COPYFILE_DISABLE=1 tar czf - bin lib | ssh <you>@<server> 'mkdir -p /tmp/webfor-wp-users && tar xzf - -C /tmp/webfor-wp-users'
+```
+
+Run it with `bash`, so no `chmod` is needed, and keep the logs in `/tmp` too:
+
+```bash
+ssh <you>@<server> 'cd /tmp/webfor-wp-users && bash bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --sites <your-app-folder> --log-dir /tmp/webfor-wp-users/logs'
+```
+
+Copy the `logs` folder back to your computer when you finish, because `/tmp` is
+cleared from time to time, then remove the tool from the server:
+
+```bash
+ssh <you>@<server> 'rm -rf /tmp/webfor-wp-users'
+```
+
+The tool runs every WP-CLI call from inside the site's folder. Cloudways'
+`wp-config.php` loads `wp-salt.php` by a relative path, and WP-CLI fails with
+`Failed opening required 'wp-salt.php'` when it starts anywhere else. You do not
+need to do anything for this; it is built in.
 
 ## Before you start
 

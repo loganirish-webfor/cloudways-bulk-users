@@ -6,7 +6,7 @@ Say you manage 40 WordPress sites on a Cloudways server and a new person joins y
 
 The command is called `webfor-wp-users`. It was built for Webfor's setup, and it works for any team that runs WordPress on Cloudways and has SSH access to the server.
 
-> **Status:** The tool passes its full test suite (314 checks) in a Docker sandbox. It has **not** been run on a live Cloudways server yet. The first live run should be a small pilot on two or three sites. See [Running the pilot](#running-the-pilot).
+> **Status:** The tool passes its full test suite (318 checks) in a Docker sandbox. Dry runs (which change nothing) have worked on two live Cloudways servers. A real `--execute` run has not been tried on a live server yet. The first live run should be a small pilot on two or three sites. See [Running the pilot](#running-the-pilot).
 
 ---
 
@@ -94,6 +94,8 @@ Run a quick check of the tools it depends on:
 ```bash
 wp --version && command -v timeout && bash --version | head -1
 ```
+
+Some Cloudways logins are application users, not `master`. Their home folder is not writable and `scp` may copy nothing. If that happens to you, the runbook has a section ([If you log in as an application user](docs/runbook.md#if-you-log-in-as-an-application-user-not-master)) that copies the tool into `/tmp` with `tar` over SSH.
 
 The tool needs a WP-CLI version that has the `application-password` command. The tests used WP-CLI 2.12.0, and older versions may not work.
 
