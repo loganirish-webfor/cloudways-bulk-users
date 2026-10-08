@@ -6,8 +6,8 @@ master user.** Nothing is installed on client sites. The tool never deletes a
 WordPress user or any content.
 
 Read `docs/limitations.md` before the first live run, and use
-`docs/pilot-results.md` to record the Server 3 pilot (a first trial of the tool on
-2-3 Webfor-managed sites on Cloudways Server 3, reviewed by Jason before any
+`docs/pilot-results.md` to record the pilot (a first trial of the tool on
+2-3 Webfor-managed sites on a Cloudways server, reviewed by a second person before any
 wider use).
 
 ## Install
@@ -48,7 +48,7 @@ On the server, as the user that will run the tool:
 1. **Dry run is the default.** Nothing changes unless you add `--execute`.
 2. **Always dry-run first, read the table, then re-run the same command with
    `--execute`.** For the pilot, always use `--sites`, never `--all`. Do not run
-   across a whole server until Jason has approved the pilot results.
+   across a whole server until a second person has approved the pilot results.
 
 A dry run still starts WP-CLI on each site (the tool issues only read
 commands in a dry run) and still writes a log file. The test suite checks this by
@@ -76,11 +76,11 @@ is reported (see Reading results) and left alone.
 
 ```bash
 cd ~/webfor-wp-users
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com \
-  --first-name Logan --last-name Irish --display-name "Logan Irish" \
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com \
+  --first-name Jane --last-name Doe --display-name "Jane Doe" \
   --sites <app-folder-1>,<app-folder-2>                # dry run
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com \
-  --first-name Logan --last-name Irish --display-name "Logan Irish" \
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com \
+  --first-name Jane --last-name Doe --display-name "Jane Doe" \
   --sites <app-folder-1>,<app-folder-2> --execute      # live
 ```
 
@@ -118,8 +118,8 @@ set up 2FA per the Webfor onboarding standard.
 ## Disable an employee (offboarding)
 
 ```bash
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --sites <apps>             # dry run
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --sites <apps> --execute   # live
+bin/webfor-wp-users disable --username jane.doe --email jane.doe@webfor.com --sites <apps>             # dry run
+bin/webfor-wp-users disable --username jane.doe --email jane.doe@webfor.com --sites <apps> --execute   # live
 ```
 
 After the pilot has been approved, `--all` replaces `--sites <apps>`; with
@@ -176,8 +176,8 @@ resumed site shows ACTION `DISABLE (resume)`.
 ## Restore an employee
 
 ```bash
-bin/webfor-wp-users restore --username logan.irish --email logan.irish@webfor.com --sites <apps>             # dry run
-bin/webfor-wp-users restore --username logan.irish --email logan.irish@webfor.com --sites <apps> --execute   # live
+bin/webfor-wp-users restore --username jane.doe --email jane.doe@webfor.com --sites <apps>             # dry run
+bin/webfor-wp-users restore --username jane.doe --email jane.doe@webfor.com --sites <apps> --execute   # live
 ```
 
 Puts back the original email and every stored role, then removes the marker.

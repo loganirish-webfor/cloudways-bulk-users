@@ -110,7 +110,7 @@ To see the built-in help at any time:
 
 ## Your first run, step by step
 
-This walkthrough adds an employee named Logan Irish to one site. Use any test site you like.
+This walkthrough adds an employee named Jane Doe to one site. Use any test site you like.
 
 **Step 1. Find the folder name of your site.** Cloudways names each site's folder with a random string:
 
@@ -127,13 +127,13 @@ cd ~/webfor-wp-users
 ```
 
 ```bash
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish" --sites abcdefghij
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --sites abcdefghij
 ```
 
 The tool prints something like this (a real example, trimmed):
 
 ```text
-DRY RUN: add logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN: add jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 1
 
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
@@ -151,12 +151,12 @@ The site's web address appears at the start of each row. Check that it is the si
 **Step 3. Run it for real.** Repeat the same command and add `--execute` at the end:
 
 ```bash
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish" --sites abcdefghij --execute
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --sites abcdefghij --execute
 ```
 
 The result column now says `CREATED - user #2` (the number is the new account's ID on that site).
 
-**Step 4. Check the site.** Open the site's WordPress admin and go to Users. You should see Logan Irish, with the right email and the Administrator role.
+**Step 4. Check the site.** Open the site's WordPress admin and go to Users. You should see Jane Doe, with the right email and the Administrator role.
 
 **Step 5. Run it a second time.** The result is `ALREADY EXISTS`, and nothing changes. You can run `add` as often as you like without making duplicates.
 
@@ -175,7 +175,7 @@ If you name a folder that does not exist, you get a `SKIPPED - no such applicati
 ## Add an employee
 
 ```bash
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish" --sites <folders>
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --sites <folders>
 ```
 
 Add `--execute` to make it real. The role defaults to Administrator. Use `--role editor` (or another role) if you want a different one.
@@ -203,7 +203,7 @@ The tool does not set up 2FA. Do that after the employee can log in.
 Use this when someone leaves.
 
 ```bash
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --sites <folders>
+bin/webfor-wp-users disable --username jane.doe --email jane.doe@webfor.com --sites <folders>
 ```
 
 Add `--execute` to make it real. WordPress has no "disabled" switch for a user, and changing a role to Subscriber still lets the person log in. So the tool takes seven steps on each site, in this order:
@@ -238,7 +238,7 @@ The account itself stays on the site. Their posts, pages, orders, and comments k
 Use this if you disabled the wrong person, or someone comes back.
 
 ```bash
-bin/webfor-wp-users restore --username logan.irish --email logan.irish@webfor.com --sites <folders>
+bin/webfor-wp-users restore --username jane.doe --email jane.doe@webfor.com --sites <folders>
 ```
 
 Add `--execute` to make it real. The tool reads the note it saved during `disable`, puts the original email back, gives back every role, and removes the note.

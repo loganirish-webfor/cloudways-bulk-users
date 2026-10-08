@@ -7,9 +7,9 @@ DBH="${DB_HOST:-db}"
 DBP="${DB_ROOT_PASSWORD:-sandbox-root}"
 APPS_WP="app_a app_b app_exists app_emailtaken app_usertaken app_soleadmin"
 
-ADD=(add --username logan.irish --email logan.irish@webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish")
-DIS=(disable --username logan.irish --email logan.irish@webfor.com)
-RST=(restore --username logan.irish --email logan.irish@webfor.com)
+ADD=(add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe")
+DIS=(disable --username jane.doe --email jane.doe@webfor.com)
+RST=(restore --username jane.doe --email jane.doe@webfor.com)
 
 fwp() { local app="$1"; shift; wp --path="$FX_ROOT/$app/public_html" "$@"; }
 
@@ -48,13 +48,13 @@ fixtures_build() {
   fx_install app_a admin admin@client-a.test
   fx_install app_b admin admin@client-b.test
   fx_install app_exists admin admin@client-c.test
-  fwp app_exists user create logan.irish logan.irish@webfor.com --role=administrator \
-    --first_name=Logan --last_name=Irish --porcelain >/dev/null
+  fwp app_exists user create jane.doe jane.doe@webfor.com --role=administrator \
+    --first_name=Jane --last_name=Doe --porcelain >/dev/null
   fx_install app_emailtaken admin admin@client-d.test
-  fwp app_emailtaken user create someone logan.irish@webfor.com --role=editor --porcelain >/dev/null
+  fwp app_emailtaken user create someone jane.doe@webfor.com --role=editor --porcelain >/dev/null
   fx_install app_usertaken admin admin@client-e.test
-  fwp app_usertaken user create logan.irish other@client-e.test --role=editor --porcelain >/dev/null
-  fx_install app_soleadmin logan.irish logan.irish@webfor.com
+  fwp app_usertaken user create jane.doe other@client-e.test --role=editor --porcelain >/dev/null
+  fx_install app_soleadmin jane.doe jane.doe@webfor.com
   mkdir -p "$FX_ROOT/app_notwp/public_html" "$FX_ROOT/app_nopublic"
   fx_install app_multisite admin admin@client-g.test
   fwp app_multisite core multisite-convert --title=network >/dev/null
@@ -110,15 +110,15 @@ app_pw_ok() { # APP LOGIN APP_PASSWORD -> yes|no
   WWU_L="$2" WWU_PW="$3" fwp "$1" eval 'add_filter( "application_password_is_api_request", "__return_true" ); $r = wp_authenticate_application_password( null, getenv( "WWU_L" ), getenv( "WWU_PW" ) ); echo ( $r instanceof WP_User ) ? "yes" : "no";' 2>/dev/null
 }
 
-prep_logan() {
+prep_jane() {
   local a id
   fixtures_reset
   run_tool "${ADD[@]}" --sites app_a,app_b --execute
   for a in app_a app_b; do
-    id="$(fwp "$a" user get logan.irish --field=ID)"
+    id="$(fwp "$a" user get jane.doe --field=ID)"
     printf -v "LID_$a" '%s' "$id"
     fwp "$a" user update "$id" --user_pass=known-pass-1 >/dev/null   # sandbox-only test value
-    fwp "$a" post create --post_author="$id" --post_title="Logan post" --post_status=publish --porcelain >/dev/null
+    fwp "$a" post create --post_author="$id" --post_title="Jane post" --post_status=publish --porcelain >/dev/null
     printf -v "APP_PW_$a" '%s' "$(fwp "$a" user application-password create "$id" probe --porcelain)"
     fwp "$a" eval "WP_Session_Tokens::get_instance( $id )->create( time() + 3600 );"
     # user update --user_pass may log notices via the mailtrap; clear so later mail_count checks measure only the tool.

@@ -30,7 +30,7 @@ assert_eq CREATED "$(status_of app_a)" "add with leaky WP-CLI still creates app_
 assert_eq CREATED "$(status_of app_b)" "add with leaky WP-CLI still creates app_b"
 assert_not_contains "$leak_text" "CANARY-addcanary" "add never echoes a password printed by WP-CLI"
 # disable: reset-password output must be discarded.
-prep_logan
+prep_jane
 WP_BIN="$SHIM" SHIM_LEAK=discanary run_tool "${DIS[@]}" --sites app_a --execute
 leak_text="$OUT$(cat "${TSV%.tsv}.log" "$TSV")"
 assert_eq DISABLED "$(status_of app_a)" "disable with leaky WP-CLI still succeeds"
@@ -38,7 +38,7 @@ assert_not_contains "$leak_text" "CANARY-discanary" "disable never echoes a pass
 
 # --- no secrets in output or logs ----------------------------------------------------------
 fixtures_reset
-prep_logan
+prep_jane
 run_tool "${DIS[@]}" --sites app_a --execute
 logs_text="$OUT$(cat "$LOGS"/*.log "$LOGS"/*.tsv)"
 assert_not_contains "$logs_text" "known-pass-1" "known password never appears in output or logs"
@@ -47,27 +47,27 @@ assert_not_contains "$logs_text" "Password:" "no 'Password:' line in output or l
 
 # --- log content ------------------------------------------------------------------------------
 LOGF="${TSV%.tsv}.log"
-assert_contains "$(cat "$LOGF")" "EXECUTE: disable logan.irish <logan.irish@webfor.com> server=testsrv" "log header: mode, op, user, email, server"
+assert_contains "$(cat "$LOGF")" "EXECUTE: disable jane.doe <jane.doe@webfor.com> server=testsrv" "log header: mode, op, user, email, server"
 assert_contains "$(cat "$LOGF")" "RESULT app_a: DISABLED" "log has the per-site result"
 assert_contains "$(cat "$LOGF")" "Applications processed: 1" "log has totals"
 
 # --- partial failure continues, then resume completes it ------------------------------
-prep_logan
+prep_jane
 WP_BIN="$SHIM" SHIM_FAIL=application-password run_tool "${DIS[@]}" --sites app_a --execute
 assert_eq FAILED "$(status_of app_a)" "step failure -> FAILED"
 assert_contains "$(detail_of app_a)" "PARTIAL" "reported as PARTIAL"
 assert_contains "$(detail_of app_a)" "4 (application passwords)" "names the failed step"
 assert_contains "$(detail_of app_a)" "completed: 1,2,3,5,6" "later steps still ran"
 assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)" '"state":"in_progress"' "marker left in_progress"
-assert_eq no "$(auth_ok app_a logan.irish known-pass-1)" "password already scrambled despite the failure"
-assert_eq "" "$(roles_sorted app_a logan.irish)" "roles already removed"
+assert_eq no "$(auth_ok app_a jane.doe known-pass-1)" "password already scrambled despite the failure"
+assert_eq "" "$(roles_sorted app_a jane.doe)" "roles already removed"
 run_tool "${DIS[@]}" --sites app_a --execute
 assert_eq DISABLED "$(status_of app_a)" "re-run resumes and finishes"
 assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)" '"state":"complete"' "marker complete after resume"
 assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)" '"roles":["administrator"]' "resume kept the original roles"
 run_tool "${RST[@]}" --sites app_a --execute
 assert_eq RESTORED "$(status_of app_a)" "a resumed disable can be restored"
-assert_eq administrator "$(roles_sorted app_a logan.irish)" "roles back after resume then restore"
+assert_eq administrator "$(roles_sorted app_a jane.doe)" "roles back after resume then restore"
 
 # --- review focus 5: a hung WP-CLI call times out and the run continues ---------------------
 fixtures_reset
@@ -93,7 +93,7 @@ assert_contains "$(detail_of app_usertaken)" "marker lookup" "reported as a mark
 assert_eq "$b" "$(fp app_usertaken)" "marker lookup error changed nothing"
 
 # --- restore: a failed role step leaves a PARTIAL result, marker kept, re-run completes ---------
-prep_logan
+prep_jane
 run_tool "${DIS[@]}" --sites app_a --execute
 assert_eq DISABLED "$(status_of app_a)" "setup: app_a disabled"
 WP_BIN="$SHIM" SHIM_FAIL=add-role run_tool "${RST[@]}" --sites app_a --execute
@@ -102,11 +102,11 @@ assert_contains "$(detail_of app_a)" "PARTIAL" "restore reported as PARTIAL"
 assert_contains "$(detail_of app_a)" "completed: 1" "email step completed"
 mk="$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)"
 assert_contains "$mk" '"state":"complete"' "marker kept after the partial restore"
-assert_eq logan.irish@webfor.com "$(fwp app_a user get "$LID_app_a" --field=user_email)" "email already restored"
-assert_eq "" "$(roles_sorted app_a logan.irish)" "roles still empty after the partial restore"
+assert_eq jane.doe@webfor.com "$(fwp app_a user get "$LID_app_a" --field=user_email)" "email already restored"
+assert_eq "" "$(roles_sorted app_a jane.doe)" "roles still empty after the partial restore"
 run_tool "${RST[@]}" --sites app_a --execute
 assert_eq RESTORED "$(status_of app_a)" "re-run of restore finishes"
-assert_eq administrator "$(roles_sorted app_a logan.irish)" "administrator back after the re-run"
+assert_eq administrator "$(roles_sorted app_a jane.doe)" "administrator back after the re-run"
 mk="$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json 2>/dev/null)"; mrc=$?
 assert_eq "" "$mk" "marker gone after the re-run (no output)"
 assert_eq 1 "$mrc" "marker gone after the re-run (exit 1)"

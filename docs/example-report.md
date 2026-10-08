@@ -9,11 +9,11 @@ each other, starting from the same fresh fixtures as block 1.
 ### 1. Add: dry run on every application
 
 ```text
-DRY RUN: add logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN: add jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-212928_testsrv_add.log
+Log: /tmp/wwu-logs/20261008-170026_testsrv_add.log
 
-DRY RUN RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN RESULTS: add jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | No | - | CREATE | WOULD CREATE | -
 https://app_b.test (app: app_b) | Yes | No | - | CREATE | WOULD CREATE | -
@@ -49,11 +49,11 @@ DRY RUN: no changes were made.
 ### 2. Add: create on two sites
 
 ```text
-EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE: add jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-212933_testsrv_add.log
+Log: /tmp/wwu-logs/20261008-170031_testsrv_add.log
 
-EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE RESULTS: add jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | No | - | CREATE | CREATED - user #2 | -
 https://app_b.test (app: app_b) | Yes | No | - | CREATE | CREATED - user #2 | -
@@ -66,11 +66,11 @@ Totals:
 ### 3. Add again: duplicate protection
 
 ```text
-EXECUTE: add logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE: add jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-212935_testsrv_add.log
+Log: /tmp/wwu-logs/20261008-170033_testsrv_add.log
 
-EXECUTE RESULTS: add logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE RESULTS: add jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | administrator | NONE | ALREADY EXISTS | -
 https://app_b.test (app: app_b) | Yes | Yes | administrator | NONE | ALREADY EXISTS | -
@@ -83,11 +83,11 @@ Totals:
 ### 4. Disable: dry run
 
 ```text
-DRY RUN: disable logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN: disable jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 10
-Log: /tmp/wwu-logs/20261007-212936_testsrv_disable.log
+Log: /tmp/wwu-logs/20261008-170035_testsrv_disable.log
 
-DRY RUN RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN RESULTS: disable jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | administrator | DISABLE | WOULD DISABLE - roles: administrator | -
 https://app_b.test (app: app_b) | Yes | Yes | administrator | DISABLE | WOULD DISABLE - roles: administrator | -
@@ -124,11 +124,11 @@ DRY RUN: no changes were made.
 ### 5. Disable: live on the two sites
 
 ```text
-EXECUTE: disable logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE: disable jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-212942_testsrv_disable.log
+Log: /tmp/wwu-logs/20261008-170041_testsrv_disable.log
 
-EXECUTE RESULTS: disable logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE RESULTS: disable jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | administrator | DISABLE | DISABLED - roles removed: administrator; email neutralised | -
 https://app_b.test (app: app_b) | Yes | Yes | administrator | DISABLE | DISABLED - roles removed: administrator; email neutralised | -
@@ -141,11 +141,11 @@ Totals:
 ### 6. Restore: dry run
 
 ```text
-DRY RUN: restore logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN: restore jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-212947_testsrv_restore.log
+Log: /tmp/wwu-logs/20261008-170046_testsrv_restore.log
 
-DRY RUN RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
+DRY RUN RESULTS: restore jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | - | RESTORE | WOULD RESTORE - roles: administrator | -
 https://app_b.test (app: app_b) | Yes | Yes | - | RESTORE | WOULD RESTORE - roles: administrator | -
@@ -160,11 +160,11 @@ DRY RUN: no changes were made.
 ### 7. Restore: live
 
 ```text
-EXECUTE: restore logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE: restore jane.doe <jane.doe@webfor.com> server=testsrv
 Applications to process: 2
-Log: /tmp/wwu-logs/20261007-212949_testsrv_restore.log
+Log: /tmp/wwu-logs/20261008-170048_testsrv_restore.log
 
-EXECUTE RESULTS: restore logan.irish <logan.irish@webfor.com> server=testsrv
+EXECUTE RESULTS: restore jane.doe <jane.doe@webfor.com> server=testsrv
 SITE | WP | USER EXISTS | ROLE | ACTION | RESULT | WARNINGS
 https://app_a.test (app: app_a) | Yes | Yes | - | RESTORE | RESTORED - roles: administrator | password stays unusable; employee must use Lost your password
 https://app_b.test (app: app_b) | Yes | Yes | - | RESTORE | RESTORED - roles: administrator | password stays unusable; employee must use Lost your password

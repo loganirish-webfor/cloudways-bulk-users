@@ -128,6 +128,5 @@
   WP-CLI or WordPress versions may differ in the details the tool parses.
 - **Not tested in a browser.** The sandbox verifies authentication, sessions,
   capabilities, and application passwords through WordPress itself, not an HTTP
-  request to `/wp-admin`. The Server 3 pilot (a first trial on 2-3 Webfor-managed sites on Cloudways Server
-  3, reviewed by Jason before wider use) must check browser access, including
+  request to `/wp-admin`. The pilot (a first trial on 2-3 Webfor-managed sites on a Cloudways server, reviewed by a second person before wider use) must check browser access, including
   that an already logged-in browser is signed out.

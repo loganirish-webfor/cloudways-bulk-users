@@ -18,11 +18,11 @@ Three operations:
 | `disable` | Cut the employee's access on each site immediately, without deleting the user or any content. |
 | `restore` | Reverse a `disable` for an account that was disabled by this tool. |
 
-Success means: a pilot on 2-3 sites of Server 3 behaves exactly as specified,
-Jason reviews the pilot results, and only then is the tool considered for
+Success means: a pilot on 2-3 sites of the pilot server behaves exactly as specified,
+A second person reviews the pilot results, and only then is the tool considered for
 server-wide use. This spec covers building and sandbox-testing the tool and
 the pilot procedure. Running the pilot and the production-readiness
-recommendation (deliverables 8 and 9) need Server 3 access and happen after
+recommendation (deliverables 8 and 9) need access to the pilot server and happen after
 the build.
 
 ## 2. Hard constraints
@@ -37,7 +37,7 @@ the build.
    installed, single-site WordPress.
 7. Never log, print, or store passwords or other credentials.
 8. Do not install, enable, or configure WP 2FA or any other plugin.
-9. Do not run across a whole server until Jason approves the pilot results.
+9. Do not run across a whole server until a second person approves the pilot results.
 
 ## 3. Execution model
 
@@ -207,7 +207,7 @@ For each site, one line: `<label>: <STATUS>[ - detail]`, preceded in dry-run
 mode by the dry-run table fields:
 
 ```
-DRY RUN: add logan.irish <logan.irish@webfor.com>  server=server3
+DRY RUN: add jane.doe <jane.doe@webfor.com>  server=myserver
 SITE                              WP   USER EXISTS  ROLE  PROPOSED ACTION   WARNINGS
 https://a.example (app: ab12)     Yes  No           -     CREATE
 https://b.example (app: cd34)     Yes  Yes          admin NONE (already)
@@ -273,13 +273,13 @@ reset-password --skip-email` produces no email and no useful stdout;
 --search-columns=user_email` matches exactly. Any that differ change the
 steps in sections 6-8 and are recorded in the pilot notes.
 
-## 11. Server 3 pilot procedure
+## 11. Pilot procedure
 
-Performed by someone with SSH to Server 3 (not by this build). Jason reviews
+Performed by someone with SSH to the pilot server (not by this build). A second person reviews
 the results before any wider use.
 
 1. Copy the tool to the server; pick 2-3 Webfor-managed test sites.
-2. `add` dry run for `logan.irish`; review each proposed action.
+2. `add` dry run for `jane.doe`; review each proposed action.
 3. `add --execute --sites <the 2-3>`. Verify manually in wp-admin: the user
    exists, email and role are correct, no other user changed, content
    unaffected.
@@ -304,7 +304,7 @@ the results before any wider use.
 6. Restore instructions: section 8 carried into the runbook.
 7. Limitations and edge cases: `docs/limitations.md`, seeded from sections
    7.3 and 10.
-8. Server 3 pilot results: `docs/pilot-results.md`, a template now, filled in
+8. Pilot results: `docs/pilot-results.md`, a template now, filled in
    after the pilot.
 9. Production-readiness recommendation: written after the pilot results.
 
@@ -312,7 +312,7 @@ the results before any wider use.
 
 Multisite and network users. Deleting or reassigning users. Configuring WP
 2FA or any plugin. A must-use login-block plugin. Password distribution or
-storage. Server-wide rollout (waits for Jason's approval).
+storage. Server-wide rollout (waits for a second person's approval).
 
 ## 14. Open items
 

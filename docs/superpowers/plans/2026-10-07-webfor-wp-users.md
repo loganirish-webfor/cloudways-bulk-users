@@ -30,7 +30,7 @@
 These are inputs the spec implies but a straight reading of the tasks would not exercise. Each has a named test in the task that owns the code.
 
 1. Folder names with path traversal or odd characters in `--sites` / `--exclude` (`../etc`, `.`, `a;b`) must be rejected with exit 2, never reach the filesystem (Task 2).
-2. Email case differences (`Logan.Irish@Webfor.com` vs stored `logan.irish@webfor.com`) must still match as the same account for `add` and for the `disable` guard (Tasks 3, 4).
+2. Email case differences (`Jane.Doe@Webfor.com` vs stored `jane.doe@webfor.com`) must still match as the same account for `add` and for the `disable` guard (Tasks 3, 4).
 3. Running `add` again after `disable` must say `ALREADY EXISTS - DISABLED, use restore`, not `USERNAME CONFLICT` (the swapped email hides the account) (Task 4).
 4. A user with more than one role must get all roles back on restore (Task 5).
 5. A hung WP-CLI call on one site must time out as `FAILED`, and the run must continue with the next site (Task 6).
@@ -74,14 +74,14 @@ docs/{runbook,limitations,example-report,pilot-results}.md
 **Interfaces:**
 - Produces (in `tests/lib/fixtures.sh`, used by every later test): variables `ROOT`, `FX_ROOT`, `LOGS`, `APPS_WP`, arrays `ADD`, `DIS`, `RST`; functions `fwp APP wp-args…`, `fixtures_build`, `fixtures_reset`, `fp APP`, `all_fp`, `mail_count APP`, `run_tool OP args…` (sets `OUT`, `RC`, `TSV`), `status_of FOLDER`, `detail_of FOLDER`, `warn_of FOLDER`, `roles_sorted APP USER`, `user_count APP`, `auth_ok APP LOGIN PW` (yes/no), `app_pw_ok APP LOGIN PW` (yes/no).
 - Produces (in `tests/lib/assert.sh`): `ok LABEL`, `bad LABEL`, `assert_eq EXPECTED ACTUAL LABEL`, `assert_contains HAYSTACK NEEDLE LABEL`, `assert_not_contains HAYSTACK NEEDLE LABEL`, `assert_summary`.
-- Fixture application folders under `/fixtures/applications`: `app_a`, `app_b` (plain), `app_exists` (logan.irish already an administrator), `app_emailtaken` (editor `someone` owns logan.irish@webfor.com), `app_usertaken` (editor `logan.irish` with other@client-e.test), `app_soleadmin` (logan.irish is the only administrator), `app_notwp` (empty `public_html`), `app_nopublic` (no `public_html`), `app_broken` (wrong DB password), `app_multisite`.
+- Fixture application folders under `/fixtures/applications`: `app_a`, `app_b` (plain), `app_exists` (jane.doe already an administrator), `app_emailtaken` (editor `someone` owns jane.doe@webfor.com), `app_usertaken` (editor `jane.doe` with other@client-e.test), `app_soleadmin` (jane.doe is the only administrator), `app_notwp` (empty `public_html`), `app_nopublic` (no `public_html`), `app_broken` (wrong DB password), `app_multisite`.
 
 - [ ] **Step 1: Initialize the repository and ignore files**
 
 The folder is not yet under git.
 
 ```bash
-cd "/Users/loganirish/Project Sites/bulk-emails"
+cd /path/to/cloudways-bulk-users
 git init
 printf 'logs/\ngraft/\n.DS_Store\n' > .gitignore
 mkdir -p bin lib tests/lib tests/docker docs
@@ -209,9 +209,9 @@ DBH="${DB_HOST:-db}"
 DBP="${DB_ROOT_PASSWORD:-sandbox-root}"
 APPS_WP="app_a app_b app_exists app_emailtaken app_usertaken app_soleadmin"
 
-ADD=(add --username logan.irish --email logan.irish@webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish")
-DIS=(disable --username logan.irish --email logan.irish@webfor.com)
-RST=(restore --username logan.irish --email logan.irish@webfor.com)
+ADD=(add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe")
+DIS=(disable --username jane.doe --email jane.doe@webfor.com)
+RST=(restore --username jane.doe --email jane.doe@webfor.com)
 
 fwp() { local app="$1"; shift; wp --path="$FX_ROOT/$app/public_html" "$@"; }
 
@@ -250,13 +250,13 @@ fixtures_build() {
   fx_install app_a admin admin@client-a.test
   fx_install app_b admin admin@client-b.test
   fx_install app_exists admin admin@client-c.test
-  fwp app_exists user create logan.irish logan.irish@webfor.com --role=administrator \
-    --first_name=Logan --last_name=Irish --porcelain >/dev/null
+  fwp app_exists user create jane.doe jane.doe@webfor.com --role=administrator \
+    --first_name=Jane --last_name=Doe --porcelain >/dev/null
   fx_install app_emailtaken admin admin@client-d.test
-  fwp app_emailtaken user create someone logan.irish@webfor.com --role=editor --porcelain >/dev/null
+  fwp app_emailtaken user create someone jane.doe@webfor.com --role=editor --porcelain >/dev/null
   fx_install app_usertaken admin admin@client-e.test
-  fwp app_usertaken user create logan.irish other@client-e.test --role=editor --porcelain >/dev/null
-  fx_install app_soleadmin logan.irish logan.irish@webfor.com
+  fwp app_usertaken user create jane.doe other@client-e.test --role=editor --porcelain >/dev/null
+  fx_install app_soleadmin jane.doe jane.doe@webfor.com
   mkdir -p "$FX_ROOT/app_notwp/public_html" "$FX_ROOT/app_nopublic"
   fx_install app_multisite admin admin@client-g.test
   fwp app_multisite core multisite-convert --title=network >/dev/null
@@ -405,31 +405,31 @@ git commit -m "test: Docker sandbox, fixtures, and WP-CLI behaviour probe" -m "C
 fixtures_reset
 
 # --- usage errors exit 2 and touch nothing -------------------------------
-run_tool add --username logan.irish --email logan.irish@webfor.com --first-name L --last-name I --display-name "L I"
+run_tool add --username jane.doe --email jane.doe@webfor.com --first-name L --last-name I --display-name "L I"
 assert_eq 2 "$RC" "no targeting -> exit 2"
-run_tool add --username logan.irish --email logan.irish@webfor.com --first-name L --last-name I --display-name "L I" --all --sites app_a
+run_tool add --username jane.doe --email jane.doe@webfor.com --first-name L --last-name I --display-name "L I" --all --sites app_a
 assert_eq 2 "$RC" "--all and --sites together -> exit 2"
-run_tool add --username Logan --email logan.irish@webfor.com --first-name L --last-name I --display-name "L I" --all
+run_tool add --username Jane --email jane.doe@webfor.com --first-name L --last-name I --display-name "L I" --all
 assert_eq 2 "$RC" "uppercase username rejected"
-run_tool add --username 12345 --email logan.irish@webfor.com --first-name L --last-name I --display-name "L I" --all
+run_tool add --username 12345 --email jane.doe@webfor.com --first-name L --last-name I --display-name "L I" --all
 assert_eq 2 "$RC" "all-digit username rejected"
-run_tool add --username logan.irish --email logan@client.com --first-name L --last-name I --display-name "L I" --all
+run_tool add --username jane.doe --email jane@client.com --first-name L --last-name I --display-name "L I" --all
 assert_eq 2 "$RC" "email outside allowed domain rejected"
-run_tool add --username logan.irish --email logan.irish@webfor.com --display-name "L I" --all
+run_tool add --username jane.doe --email jane.doe@webfor.com --display-name "L I" --all
 assert_eq 2 "$RC" "add without first/last name rejected"
-run_tool disable --username logan.irish --email logan.irish@webfor.com --sites ../etc
+run_tool disable --username jane.doe --email jane.doe@webfor.com --sites ../etc
 assert_eq 2 "$RC" "path traversal in --sites rejected"
-run_tool disable --username logan.irish --email logan.irish@webfor.com --sites .
+run_tool disable --username jane.doe --email jane.doe@webfor.com --sites .
 assert_eq 2 "$RC" "dot folder rejected"
-run_tool disable --username logan.irish --email logan.irish@webfor.com --sites 'a;b'
+run_tool disable --username jane.doe --email jane.doe@webfor.com --sites 'a;b'
 assert_eq 2 "$RC" "odd characters in --sites rejected"
-run_tool disable --username logan.irish --email logan.irish@webfor.com --all --exclude ../x
+run_tool disable --username jane.doe --email jane.doe@webfor.com --all --exclude ../x
 assert_eq 2 "$RC" "path traversal in --exclude rejected"
 run_tool bogus --username x
 assert_eq 2 "$RC" "unknown operation rejected"
 
 # --- discovery and validation (op-independent statuses) -------------------
-run_tool disable --username logan.irish --email logan.irish@webfor.com --all
+run_tool disable --username jane.doe --email jane.doe@webfor.com --all
 assert_contains "$OUT" "DRY RUN" "dry run is the default and says so"
 assert_eq SKIPPED "$(status_of app_notwp)" "empty public_html -> SKIPPED"
 assert_contains "$(detail_of app_notwp)" "not WordPress" "reason: not WordPress"
@@ -442,26 +442,26 @@ assert_contains "$(tsv_col app_a 1)" "https://app_a.test" "label carries siteurl
 assert_contains "$OUT" "Needs manual review" "review list printed"
 assert_contains "$OUT" "Applications processed: 10" "all ten folders processed"
 
-run_tool disable --username logan.irish --email logan.irish@webfor.com --sites app_nope
+run_tool disable --username jane.doe --email jane.doe@webfor.com --sites app_nope
 assert_eq SKIPPED "$(status_of app_nope)" "unknown folder -> SKIPPED row, not a crash"
 assert_contains "$(detail_of app_nope)" "no such application folder" "reason: no such folder"
 
-run_tool disable --username logan.irish --email logan.irish@webfor.com --all --exclude app_a,app_b,app_exists,app_emailtaken,app_usertaken,app_soleadmin,app_notwp,app_nopublic,app_multisite,app_broken
+run_tool disable --username jane.doe --email jane.doe@webfor.com --all --exclude app_a,app_b,app_exists,app_emailtaken,app_usertaken,app_soleadmin,app_notwp,app_nopublic,app_multisite,app_broken
 assert_eq 1 "$RC" "zero targets after --exclude -> exit 1"
 assert_contains "$OUT" "no applications" "zero-target message"
 
 mkdir -p /tmp/wwu-empty-root
-run_tool disable --username logan.irish --email logan.irish@webfor.com --all --apps-root /tmp/wwu-empty-root
+run_tool disable --username jane.doe --email jane.doe@webfor.com --all --apps-root /tmp/wwu-empty-root
 assert_eq 1 "$RC" "empty apps root -> exit 1"
 
-run_tool disable --username logan.irish --email logan.irish@webfor.com --all --exclude app_a
+run_tool disable --username jane.doe --email jane.doe@webfor.com --all --exclude app_a
 assert_eq "" "$(status_of app_a)" "--exclude removes a folder from the run"
 
 # --- logging ---------------------------------------------------------------
 LOGF="${TSV%.tsv}.log"
 assert_eq 600 "$(stat -c %a "$LOGF")" "log file mode 600"
 assert_contains "$(cat "$LOGF")" "server=testsrv" "log records the server"
-assert_contains "$(cat "$LOGF")" "logan.irish" "log records the username"
+assert_contains "$(cat "$LOGF")" "jane.doe" "log records the username"
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -988,24 +988,24 @@ assert_eq 0 "$RC" "live create exits 0"
 assert_eq CREATED "$(status_of app_a)" "app_a: CREATED"
 assert_eq CREATED "$(status_of app_b)" "app_b: CREATED"
 assert_eq "$((users_before + 1))" "$(user_count app_a)" "exactly one user added"
-assert_eq "logan.irish@webfor.com" "$(fwp app_a user get logan.irish --field=user_email)" "email correct"
-assert_eq '["administrator"]' "$(fwp app_a user get logan.irish --field=roles --format=json)" "role is administrator"
-assert_eq "Logan Irish" "$(fwp app_a user get logan.irish --field=display_name)" "display name"
-assert_eq "Logan" "$(fwp app_a user meta get "$(fwp app_a user get logan.irish --field=ID)" first_name)" "first name"
+assert_eq "jane.doe@webfor.com" "$(fwp app_a user get jane.doe --field=user_email)" "email correct"
+assert_eq '["administrator"]' "$(fwp app_a user get jane.doe --field=roles --format=json)" "role is administrator"
+assert_eq "Jane Doe" "$(fwp app_a user get jane.doe --field=display_name)" "display name"
+assert_eq "Jane" "$(fwp app_a user meta get "$(fwp app_a user get jane.doe --field=ID)" first_name)" "first name"
 assert_eq "$admin_email_before" "$(fwp app_a user get admin --field=user_email)" "existing admin untouched"
 assert_eq 0 "$(mail_count app_a)" "no email sent on create"
 assert_not_contains "$OUT" "Password:" "no password printed"
 assert_not_contains "$(cat "${TSV%.tsv}.log")" "Password:" "no password logged"
 
 # --- duplicate protection ----------------------------------------------------
-registered="$(fwp app_a user get logan.irish --field=user_registered)"
+registered="$(fwp app_a user get jane.doe --field=user_registered)"
 run_tool "${ADD[@]}" --sites app_a,app_b --execute
 assert_eq "ALREADY EXISTS" "$(status_of app_a)" "second run: ALREADY EXISTS"
 assert_eq "$((users_before + 1))" "$(user_count app_a)" "no duplicate created"
-assert_eq "$registered" "$(fwp app_a user get logan.irish --field=user_registered)" "existing account unchanged"
+assert_eq "$registered" "$(fwp app_a user get jane.doe --field=user_registered)" "existing account unchanged"
 
 # --- review focus 2: email case-insensitivity -------------------------------
-run_tool add --username logan.irish --email Logan.Irish@Webfor.com --first-name Logan --last-name Irish --display-name "Logan Irish" --sites app_a --execute
+run_tool add --username jane.doe --email Jane.Doe@Webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --sites app_a --execute
 assert_eq "ALREADY EXISTS" "$(status_of app_a)" "mixed-case email still the same account"
 
 # --- conflicts are never modified --------------------------------------------
@@ -1015,10 +1015,10 @@ assert_eq "$c_before" "$(fp app_emailtaken)$(fp app_usertaken)" "conflict sites 
 assert_eq 1 "$RC" "conflicts exit 1"
 
 # --- role note when the existing account is not an administrator -------------
-fwp app_exists user set-role logan.irish editor >/dev/null
+fwp app_exists user set-role jane.doe editor >/dev/null
 run_tool "${ADD[@]}" --sites app_exists
 assert_contains "$(detail_of app_exists)" "role: editor, expected administrator" "role mismatch noted, not changed"
-assert_eq '["editor"]' "$(fwp app_exists user get logan.irish --field=roles --format=json)" "role not modified"
+assert_eq '["editor"]' "$(fwp app_exists user get jane.doe --field=roles --format=json)" "role not modified"
 
 # --- a role that does not exist on the site ----------------------------------
 run_tool add --username new.person --email new.person@webfor.com --first-name New --last-name Person --display-name "New Person" --role nosuchrole --sites app_a --execute
@@ -1118,25 +1118,25 @@ git commit -m "feat: add operation with conflict and duplicate protection" -m "C
 
 **Files:**
 - Create: `lib/op_disable.sh`, `tests/t_30_disable.sh`
-- Modify: `tests/lib/fixtures.sh` (append `prep_logan`)
+- Modify: `tests/lib/fixtures.sh` (append `prep_jane`)
 
 **Interfaces:**
 - Consumes: `marker_read/marker_write`, `try_step`, `wpx_nostdout`, `user_roles`, `lookup_user`, `user_field`, `has_role`, `err_reason`, `record_result`, globals `UROLES`, `MK_*`.
 - Produces: `op_disable_site`; `disable_steps ID RESUME ORIG_EMAIL`; `app_passwords_delete_all ID`; `remove_all_roles ID`.
-- Test helper produced: `prep_logan` (resets fixtures; creates logan.irish on `app_a` and `app_b` via the tool; sets known password `known-pass-1`; creates a published post authored by him; one application password in `APP_PW_<app>`; one session; gives him an extra `editor` role on `app_b`; stores his ids in `LID_app_a` / `LID_app_b`).
+- Test helper produced: `prep_jane` (resets fixtures; creates jane.doe on `app_a` and `app_b` via the tool; sets known password `known-pass-1`; creates a published post authored by him; one application password in `APP_PW_<app>`; one session; gives him an extra `editor` role on `app_b`; stores his ids in `LID_app_a` / `LID_app_b`).
 
-- [ ] **Step 1: Append `prep_logan` to `tests/lib/fixtures.sh`**
+- [ ] **Step 1: Append `prep_jane` to `tests/lib/fixtures.sh`**
 
 ```bash
-prep_logan() {
+prep_jane() {
   local a id
   fixtures_reset
   run_tool "${ADD[@]}" --sites app_a,app_b --execute
   for a in app_a app_b; do
-    id="$(fwp "$a" user get logan.irish --field=ID)"
+    id="$(fwp "$a" user get jane.doe --field=ID)"
     printf -v "LID_$a" '%s' "$id"
     fwp "$a" user update "$id" --user_pass=known-pass-1 >/dev/null   # sandbox-only test value
-    fwp "$a" post create --post_author="$id" --post_title="Logan post" --post_status=publish --porcelain >/dev/null
+    fwp "$a" post create --post_author="$id" --post_title="Jane post" --post_status=publish --porcelain >/dev/null
     printf -v "APP_PW_$a" '%s' "$(fwp "$a" user application-password create "$id" probe --porcelain)"
     fwp "$a" eval "WP_Session_Tokens::get_instance( $id )->create( time() + 3600 );"
   done
@@ -1149,9 +1149,9 @@ prep_logan() {
 `tests/t_30_disable.sh`:
 
 ```bash
-prep_logan
-assert_eq yes "$(auth_ok app_a logan.irish known-pass-1)" "precondition: password works"
-assert_eq yes "$(app_pw_ok app_a logan.irish "$APP_PW_app_a")" "precondition: app password works"
+prep_jane
+assert_eq yes "$(auth_ok app_a jane.doe known-pass-1)" "precondition: password works"
+assert_eq yes "$(app_pw_ok app_a jane.doe "$APP_PW_app_a")" "precondition: app password works"
 
 # --- dry run ------------------------------------------------------------------
 before="$(all_fp)"
@@ -1178,13 +1178,13 @@ for a in app_a app_b; do
   id="$(eval "printf '%s' \"\$LID_$a\"")"
   pw="$(eval "printf '%s' \"\$APP_PW_$a\"")"
   assert_eq DISABLED "$(status_of "$a")" "$a: DISABLED"
-  assert_eq no "$(auth_ok "$a" logan.irish known-pass-1)" "$a: old password rejected"
-  assert_eq no "$(app_pw_ok "$a" logan.irish "$pw")" "$a: application password revoked"
+  assert_eq no "$(auth_ok "$a" jane.doe known-pass-1)" "$a: old password rejected"
+  assert_eq no "$(app_pw_ok "$a" jane.doe "$pw")" "$a: application password revoked"
   assert_eq '[]' "$(fwp "$a" user session list "$id" --format=json)" "$a: sessions destroyed"
   assert_eq '[]' "$(fwp "$a" user get "$id" --field=roles --format=json)" "$a: no roles"
   assert_eq "" "$(fwp "$a" user list-caps "$id")" "$a: no capabilities"
   assert_eq "disabled+$id@webfor.invalid" "$(fwp "$a" user get "$id" --field=user_email)" "$a: email neutralised"
-  assert_eq "$id" "$(fwp "$a" user get logan.irish --field=ID)" "$a: user record kept"
+  assert_eq "$id" "$(fwp "$a" user get jane.doe --field=ID)" "$a: user record kept"
   assert_eq 1 "$(fwp "$a" post list --post_author="$id" --post_status=any --format=count)" "$a: authored content kept"
   assert_contains "$(fwp "$a" user meta get "$id" webfor_disabled --format=json)" '"state":"complete"' "$a: marker complete"
   assert_eq 0 "$(mail_count "$a")" "$a: no mail sent"
@@ -1206,12 +1206,12 @@ assert_contains "$(detail_of app_a)" "DISABLED, use restore" "add after disable 
 assert_eq "$after" "$(fp app_a)" "add after disable changed nothing"
 
 # --- review focus 2: disable guard is case-insensitive on email ----------------
-prep_logan
-run_tool disable --username logan.irish --email LOGAN.IRISH@WEBFOR.COM --sites app_a --execute
+prep_jane
+run_tool disable --username jane.doe --email JANE.DOE@WEBFOR.COM --sites app_a --execute
 assert_eq DISABLED "$(status_of app_a)" "mixed-case --email still matches the account"
 
 # --- email mismatch on an already-disabled account is refused -------------------
-run_tool disable --username logan.irish --email other.person@webfor.com --sites app_a --execute
+run_tool disable --username jane.doe --email other.person@webfor.com --sites app_a --execute
 assert_eq "EMAIL MISMATCH" "$(status_of app_a)" "disable with the wrong email is refused"
 ```
 
@@ -1334,7 +1334,7 @@ git commit -m "feat: disable operation with guards, marker, and resumable steps"
 - Create: `lib/op_restore.sh`, `tests/t_40_restore.sh`
 
 **Interfaces:**
-- Consumes: `marker_read`, `try_step`, `wpx_nostdout`, `lookup_user`, `valid_slug`, `record_result`, `MK_*`; test helper `prep_logan` (Task 4).
+- Consumes: `marker_read`, `try_step`, `wpx_nostdout`, `lookup_user`, `valid_slug`, `record_result`, `MK_*`; test helper `prep_jane` (Task 4).
 - Produces: `op_restore_site`; `restore_roles ID`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1342,7 +1342,7 @@ git commit -m "feat: disable operation with guards, marker, and resumable steps"
 `tests/t_40_restore.sh`:
 
 ```bash
-prep_logan
+prep_jane
 run_tool "${DIS[@]}" --sites app_a,app_b --execute
 assert_eq DISABLED "$(status_of app_a)" "precondition: disabled"
 
@@ -1355,11 +1355,11 @@ assert_eq "NOT DISABLED" "$(status_of app_exists)" "never disabled: NOT DISABLED
 assert_eq "NOT FOUND" "$(status_of app_emailtaken)" "no such user: NOT FOUND"
 
 # --- guards ------------------------------------------------------------------------
-run_tool restore --username logan.irish --email other.person@webfor.com --sites app_a --execute
+run_tool restore --username jane.doe --email other.person@webfor.com --sites app_a --execute
 assert_eq "EMAIL MISMATCH" "$(status_of app_a)" "restore with the wrong email is refused"
 assert_eq "disabled+$LID_app_a@webfor.invalid" "$(fwp app_a user get "$LID_app_a" --field=user_email)" "still disabled after refusal"
 
-fwp app_a user create squatter logan.irish@webfor.com --role=subscriber --porcelain >/dev/null
+fwp app_a user create squatter jane.doe@webfor.com --role=subscriber --porcelain >/dev/null
 s_before="$(fp app_a)"
 run_tool "${RST[@]}" --sites app_a --execute
 assert_eq "EMAIL CONFLICT" "$(status_of app_a)" "original email now owned by someone else: EMAIL CONFLICT"
@@ -1372,20 +1372,20 @@ assert_eq 0 "$RC" "live restore exits 0"
 for a in app_a app_b; do
   id="$(eval "printf '%s' \"\$LID_$a\"")"
   assert_eq RESTORED "$(status_of "$a")" "$a: RESTORED"
-  assert_eq "logan.irish@webfor.com" "$(fwp "$a" user get "$id" --field=user_email)" "$a: email back"
-  assert_eq no "$(auth_ok "$a" logan.irish known-pass-1)" "$a: old password still does not work"
+  assert_eq "jane.doe@webfor.com" "$(fwp "$a" user get "$id" --field=user_email)" "$a: email back"
+  assert_eq no "$(auth_ok "$a" jane.doe known-pass-1)" "$a: old password still does not work"
   assert_contains "$(warn_of "$a")" "Lost your password" "$a: report says a reset is required"
   assert_eq 1 "$(fwp "$a" post list --post_author="$id" --post_status=any --format=count)" "$a: content intact"
   fwp "$a" user meta get "$id" webfor_disabled >/dev/null 2>&1
   assert_eq 1 "$?" "$a: marker removed"
 done
-assert_eq administrator "$(roles_sorted app_a logan.irish)" "app_a: administrator back"
+assert_eq administrator "$(roles_sorted app_a jane.doe)" "app_a: administrator back"
 # review focus 4: every role comes back
-assert_eq "administrator,editor" "$(roles_sorted app_b logan.irish)" "app_b: both roles back"
+assert_eq "administrator,editor" "$(roles_sorted app_b jane.doe)" "app_b: both roles back"
 
 # --- the employee sets a new password via the reset flow ------------------------------
 fwp app_a user update "$LID_app_a" --user_pass=new-pass-2 >/dev/null   # stands in for the emailed reset link
-assert_eq yes "$(auth_ok app_a logan.irish new-pass-2)" "restored account authenticates once a new password is set"
+assert_eq yes "$(auth_ok app_a jane.doe new-pass-2)" "restored account authenticates once a new password is set"
 
 # --- idempotent ----------------------------------------------------------------------------
 after="$(fp app_a)"
@@ -1475,7 +1475,7 @@ git commit -m "feat: restore operation" -m "Co-Authored-By: Claude Sonnet 5.5 <n
 - Modify: whichever `lib/` file a failing test points at (expected: none)
 
 **Interfaces:**
-- Consumes: `WP_BIN` and `WP_TIMEOUT` environment variables honoured by `lib/wp.sh`; `prep_logan`.
+- Consumes: `WP_BIN` and `WP_TIMEOUT` environment variables honoured by `lib/wp.sh`; `prep_jane`.
 - Produces: `tests/lib/wp-shim.sh`, a WP-CLI test double controlled by `SHIM_FAIL` (a word that, when it appears in the arguments, makes the call fail with `Error: injected failure`) and `SHIM_SLEEP` (seconds to hang before running).
 
 - [ ] **Step 1: Write the shim**
@@ -1526,7 +1526,7 @@ assert_eq "$b" "$(all_fp)" "wrong confirmation changed nothing"
 
 # --- no secrets in output or logs ----------------------------------------------------------
 fixtures_reset
-prep_logan
+prep_jane
 run_tool "${DIS[@]}" --sites app_a --execute
 logs_text="$OUT$(cat "$LOGS"/*.log "$LOGS"/*.tsv)"
 assert_not_contains "$logs_text" "known-pass-1" "known password never appears in output or logs"
@@ -1535,19 +1535,19 @@ assert_not_contains "$logs_text" "Password:" "no 'Password:' line in output or l
 
 # --- log content ------------------------------------------------------------------------------
 LOGF="${TSV%.tsv}.log"
-assert_contains "$(cat "$LOGF")" "EXECUTE: disable logan.irish <logan.irish@webfor.com> server=testsrv" "log header: mode, op, user, email, server"
+assert_contains "$(cat "$LOGF")" "EXECUTE: disable jane.doe <jane.doe@webfor.com> server=testsrv" "log header: mode, op, user, email, server"
 assert_contains "$(cat "$LOGF")" "RESULT app_a: DISABLED" "log has the per-site result"
 assert_contains "$(cat "$LOGF")" "Applications processed: 1" "log has totals"
 
 # --- partial failure continues, then resume completes it ------------------------------
-prep_logan
+prep_jane
 WP_BIN="$SHIM" SHIM_FAIL=application-password run_tool "${DIS[@]}" --sites app_a --execute
 assert_eq FAILED "$(status_of app_a)" "step failure -> FAILED"
 assert_contains "$(detail_of app_a)" "PARTIAL" "reported as PARTIAL"
 assert_contains "$(detail_of app_a)" "4 (application passwords)" "names the failed step"
 assert_contains "$(detail_of app_a)" "completed: 1,2,3,5,6" "later steps still ran"
 assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)" '"state":"in_progress"' "marker left in_progress"
-assert_eq no "$(auth_ok app_a logan.irish known-pass-1)" "password already scrambled despite the failure"
+assert_eq no "$(auth_ok app_a jane.doe known-pass-1)" "password already scrambled despite the failure"
 assert_eq '[]' "$(fwp app_a user get "$LID_app_a" --field=roles --format=json)" "roles already removed"
 run_tool "${DIS[@]}" --sites app_a --execute
 assert_eq DISABLED "$(status_of app_a)" "re-run resumes and finishes"
@@ -1555,7 +1555,7 @@ assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format
 assert_contains "$(fwp app_a user meta get "$LID_app_a" webfor_disabled --format=json)" '"roles":["administrator"]' "resume kept the original roles"
 run_tool "${RST[@]}" --sites app_a --execute
 assert_eq RESTORED "$(status_of app_a)" "a resumed disable can be restored"
-assert_eq administrator "$(roles_sorted app_a logan.irish)" "roles back after resume then restore"
+assert_eq administrator "$(roles_sorted app_a jane.doe)" "roles back after resume then restore"
 
 # --- review focus 5: a hung WP-CLI call times out and the run continues ---------------------
 fixtures_reset
@@ -1661,8 +1661,8 @@ Check WP-CLI works: `wp --info`.
 
 ```bash
 cd ~/webfor-wp-users
-bin/webfor-wp-users add --username logan.irish --email logan.irish@webfor.com \
-  --first-name Logan --last-name Irish --display-name "Logan Irish" \
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com \
+  --first-name Jane --last-name Doe --display-name "Jane Doe" \
   --sites <app-folder-1>,<app-folder-2>             # dry run
 bin/webfor-wp-users add ... --sites <app-folder-1>,<app-folder-2> --execute
 ```
@@ -1688,8 +1688,8 @@ the Webfor onboarding standard.
 ## Disable an employee (offboarding)
 
 ```bash
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --all      # dry run
-bin/webfor-wp-users disable --username logan.irish --email logan.irish@webfor.com --all --execute
+bin/webfor-wp-users disable --username jane.doe --email jane.doe@webfor.com --all      # dry run
+bin/webfor-wp-users disable --username jane.doe --email jane.doe@webfor.com --all --execute
 ```
 
 `--all --execute` asks you to type `ALL`. Per application, in order:
@@ -1716,8 +1716,8 @@ reported cause and **re-run the same command**: it resumes safely.
 ## Restore an employee
 
 ```bash
-bin/webfor-wp-users restore --username logan.irish --email logan.irish@webfor.com --sites <apps>            # dry run
-bin/webfor-wp-users restore --username logan.irish --email logan.irish@webfor.com --sites <apps> --execute
+bin/webfor-wp-users restore --username jane.doe --email jane.doe@webfor.com --sites <apps>            # dry run
+bin/webfor-wp-users restore --username jane.doe --email jane.doe@webfor.com --sites <apps> --execute
 ```
 
 Puts back the original email and every original role, then removes the
@@ -1770,15 +1770,15 @@ and `WP_BIN=wp` are environment variables.
   `WP_TIMEOUT` seconds (default 120) and the site is reported `FAILED`.
 - **Not tested in a browser.** The sandbox verifies authentication, sessions,
   capabilities, and application passwords through WordPress itself, not an
-  HTTP request to `/wp-admin`. The Server 3 pilot covers that.
+  HTTP request to `/wp-admin`. The pilot covers that.
 ```
 
 - [ ] **Step 4: Write `docs/pilot-results.md`**
 
-The blanks are intentional: they are filled in by whoever runs the Server 3 pilot, then Jason reviews the file before any wider use.
+The blanks are intentional: they are filled in by whoever runs the pilot, then a second person reviews the file before any wider use.
 
 ```markdown
-# Server 3 pilot results
+# Pilot results
 
 Run by: ______  Date: ______  Tool version (git commit): ______
 Sites used (2-3, Webfor-managed): ______
@@ -1786,8 +1786,8 @@ Sites used (2-3, Webfor-managed): ______
 ## Test 1: Add
 - [ ] Dry run reviewed. Output saved at: ______
 - [ ] Live run on only the pilot sites. Log: ______
-- [ ] Logan Irish exists on each site
-- [ ] Email is logan.irish@webfor.com
+- [ ] Jane Doe exists on each site
+- [ ] Email is jane.doe@webfor.com
 - [ ] Role is Administrator
 - [ ] No other users changed; content unaffected
 - Password workflow: "Lost your password?" email arrived? ___ Link worked? ___
@@ -1803,7 +1803,7 @@ Sites used (2-3, Webfor-managed): ______
 - [ ] Administrator privileges gone
 - [ ] User record remains; authored content intact
 - [ ] No other users affected
-- [ ] "Lost your password?" for the old login does not deliver mail to Logan
+- [ ] "Lost your password?" for the old login does not deliver mail to Jane
 
 ## Test 4: Restore
 - [ ] Role and email restored
@@ -1816,7 +1816,7 @@ ______
 ## Recommendation (to be written after the pilot)
 Safe to use across an entire Cloudways server? ______
 Conditions before wider use: ______
-Reviewed by Jason: ______  Date: ______
+Reviewed by: ______  Date: ______
 ```
 
 - [ ] **Step 5: Final full run and commit**
@@ -1844,7 +1844,7 @@ git commit -m "docs: runbook, limitations, example report, and pilot results tem
 - §8 restore: Task 5.
 - §9 output and logs: Tasks 2, 6 (`record_result`, `print_report`, mode 600, log content).
 - §10 testing: fixtures cover every listed row; probe covers the "verify before relying" list (Task 1).
-- §11 pilot procedure: documented in the runbook and `pilot-results.md` (Task 7); execution is outside this plan (needs Server 3).
+- §11 pilot procedure: documented in the runbook and `pilot-results.md` (Task 7); execution is outside this plan (needs access to the pilot server).
 - §12 deliverables 1-7: Tasks 2-7. Deliverables 8-9: template only, intentionally.
 
 **Deliberate refinements of the spec** (all consistent with it): the tool continues past a failed disable step and lists every failure; the "Totals" block is generated per status rather than a fixed list; `--sites` unknown folder yields a `SKIPPED` row.
