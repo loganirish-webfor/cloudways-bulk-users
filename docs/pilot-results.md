@@ -49,10 +49,10 @@ What the live test found:
   plugin. The server did record a reset after the disable in round 1, so a
   post-disable email cannot be ruled out. Watch for this during the pilot.
 
-Not covered yet: the Administrator role live (including `LAST ADMIN`), more than
-one site in a run, `--all`, accounts whose username differs from the one given,
-sites with single sign-on plugins, and a server where the login is `master`.
-Dry runs only were done on a second server.
+Not covered by that first live test: the Administrator role, more than one site in
+a run, `--all`, accounts whose username differs from the one given, sites with
+single sign-on plugins, and a `master` login. The sections below cover some of
+these. Dry runs only were done on a second server.
 
 ## Whole-server dry run (already done): one server, master login, no changes
 
@@ -81,7 +81,47 @@ It found two bugs, both fixed and covered by new tests:
   object-cache drop-in now warns that cached user data may be stale. Whether Redis
   really serves the old user was not tested.
 
-The fixed code has not been run on the server yet.
+The fixed code (commit `02bc912`) was then dry-run on the same server: 30
+applications instead of 59, no `FAILED` rows, and the four sites that had failed
+now showed `ALREADY EXISTS`.
+
+## First multi-site live run (already done): three sites, Administrator
+
+Date: 2026-10-09. Tool code: commit `02bc912`. Master login, from the Cloudways
+browser terminal. `add` of the tester's own staff account as an Administrator on
+three client sites, named with `--sites` (never `--all`).
+
+| Step | Result |
+|---|---|
+| Dry run of the three sites | `WOULD CREATE` on all three, exit 0. The live run was gated on a clean dry run. |
+| `add --execute` | `CREATED` on all three (user IDs #21, #15, #14), exit 0. |
+| Read-only check afterwards (run from inside each site's folder) | Role `administrator` and the right email on all three. The sites had 10, 4 and 6 users, of which 7, 4 and 6 were Administrators. |
+| Browser | The tester set a password with "Lost your password?" on each site and logged in. No per-site timing of the reset email was recorded. |
+
+Then a throwaway Administrator (`tool.admin`, a `+pilot` address in the tester's own
+mailbox) was added to the same three sites with the same dry-run-first gate:
+`CREATED` on all three, role `administrator`. The disable and restore test was
+**not** run. The tester judged it unnecessary risk on client sites, and the account
+was removed. The tool never deletes users, so it was deleted by hand with a
+WP-CLI command that first checked the username, the email and that the account had
+no posts. All three sites then answered `Invalid user` for `tool.admin`. It never had
+a password and never logged in.
+
+What this run showed:
+
+- **My own check commands failed silently at first.** Cloudways' `wp-config.php`
+  loads `wp-salt.php` by a relative path, so a bare `wp --path=...` printed nothing
+  and counted 0 users. Run `wp` from inside the site folder, as the tool does.
+  Because of this, the user counts from before the add were not captured, so
+  "exactly one user created" rests on the tool's `CREATED` line (one per site), not
+  on a before and after count.
+- **A browser terminal needs care.** See the runbook section on the master login.
+  Right-click Paste worked for long commands; Cmd+V on a Mac added a stray `v`.
+
+Still not tested live: `disable` and `restore` of an Administrator, `LAST ADMIN`,
+`--all` with `--execute`, the object-cache warning on a real site, and the alias
+folder handling in a live run (it was covered by sandbox tests and a whole-server
+dry run).
 
 Run by: ______  Date: ______  Tool version (git commit): ______
 SSH login user (`master` or an application user): ______

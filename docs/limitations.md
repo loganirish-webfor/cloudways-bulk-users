@@ -150,9 +150,11 @@
 - **Live runs.** `--execute` has been run in the Docker sandbox and once on a
   live site, with a throwaway Editor account: add, add again, disable, disable
   again and restore all worked, and a browser confirmed the disabled account was
-  signed out and could not log in (see `docs/pilot-results.md`). Not yet tried
-  live: the Administrator role, several sites in one run, `--all`, and a `master`
-  login. Dry runs on two live servers changed nothing (checked afterwards).
+  signed out and could not log in. A later live run added an Administrator account
+  to three sites in one run from the master login (see `docs/pilot-results.md`). Not
+  yet tried live: `disable` or `restore` of an Administrator, `LAST ADMIN`, and
+  `--all` with `--execute`. Dry runs on live servers changed nothing (checked
+  afterwards).
 - **Tested versions.** Behaviour was measured against WP-CLI 2.12.0 and
   WordPress 7.1.3 in the Docker sandbox (the WP-CLI findings are in the header of
   `tests/t_00_probe.sh`); the sandbox ran GNU bash 5.3.9 and other bash versions
