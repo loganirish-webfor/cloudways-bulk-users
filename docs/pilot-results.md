@@ -148,6 +148,27 @@ This went beyond the 2-3 site pilot that the brief says a second person should r
 first. The tester chose it, because it only adds their own account and changes nobody
 else. `disable` and `restore` were not run at this scale.
 
+## Second server (already done): whole-server scan, 14-site live add, re-scan
+
+Date: 2026-10-09. Tool code: commit `02bc912`. A second Cloudways server with 32
+applications, no alias folders. Master login, browser terminal (that server's master
+username, typed by hand).
+
+| Step | Result |
+|---|---|
+| `add --all` dry run | 32 applications processed, exit 0, nothing changed. 18 `ALREADY EXISTS` (one of them with a non-Administrator role, shown as `ALREADY EXISTS - (role: employee, expected administrator)` and left alone), 14 `WOULD CREATE`, no `FAILED`, `SKIPPED` or `EMAIL CONFLICT`. |
+| `add --execute` on the 14 `WOULD CREATE` sites (`--sites`, gated on a clean dry run) | `CREATED` on all 14, exit 0, no warnings. |
+| Read-only check afterwards | Right email and role `administrator` on all 14. |
+| `add --all` dry run again | `ALREADY EXISTS` on all 32, exit 0, nothing changed. This is the duplicate-protection check done live, across a whole server. |
+
+Server state afterwards: 31 of 32 sites have the account as Administrator; one has it
+with a lower role, left as it was. Two higher user IDs (a few hundred on one site) are
+normal for sites with many accounts.
+
+Across both servers the live adds so far are 3 + 11 + 14 = 28 sites, plus 27 sites
+that already had the account. Two Cloudways servers are not done yet (and one WP Engine
+site, which this tool does not cover).
+
 Run by: ______  Date: ______  Tool version (git commit): ______
 SSH login user (`master` or an application user): ______
 Server: ______  WP-CLI version (`wp --version`): ______

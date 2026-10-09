@@ -151,7 +151,8 @@
   live site, with a throwaway Editor account: add, add again, disable, disable
   again and restore all worked, and a browser confirmed the disabled account was
   signed out and could not log in. Later live runs added an Administrator account
-  to 3 sites, then 11 more, from the master login (see `docs/pilot-results.md`). Not
+  to 3 sites, then 11 more, on one server and 14 on a second, from the master login
+  (see `docs/pilot-results.md`). Not
   yet tried live: `disable` or `restore` of an Administrator, `LAST ADMIN`, and
   `--all` with `--execute`. Dry runs on live servers changed nothing (checked
   afterwards).
