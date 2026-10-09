@@ -123,6 +123,29 @@ Still not tested live: `disable` and `restore` of an Administrator, `LAST ADMIN`
 folder handling in a live run (it was covered by sandbox tests and a whole-server
 dry run).
 
+## Eleven-site live run (already done): same server, Administrator
+
+Date: 2026-10-09, after the three-site run. Tool code: commit `02bc912`. Master login,
+browser terminal. `add` of the tester's own staff account as an Administrator on the
+11 remaining WordPress sites of that server that did not have it, named with `--sites`
+(never `--all`). The live run was gated on a clean dry run.
+
+| Step | Result |
+|---|---|
+| Dry run of the 11 sites | `WOULD CREATE` on all 11, exit 0, nothing changed. |
+| `add --execute` | `CREATED` on all 11, exit 0, no warnings. |
+| Read-only check afterwards | Role `administrator` on all 11. The check did not print the email (it kept only the last output line), so the email rests on the tool's own `CREATED` line and on the same check on the first three sites, which did show it. |
+| Time | A minute or two for 11 sites. |
+
+Server state afterwards: of the 28 WordPress sites on that server, 27 have the account.
+The remaining one has the same email under a different username, so the tool reported
+`EMAIL CONFLICT` and changed nothing; it needs a decision by hand. Two folders are not
+WordPress and are skipped. Other servers were not touched.
+
+This went beyond the 2-3 site pilot that the brief says a second person should review
+first. The tester chose it, because it only adds their own account and changes nobody
+else. `disable` and `restore` were not run at this scale.
+
 Run by: ______  Date: ______  Tool version (git commit): ______
 SSH login user (`master` or an application user): ______
 Server: ______  WP-CLI version (`wp --version`): ______
