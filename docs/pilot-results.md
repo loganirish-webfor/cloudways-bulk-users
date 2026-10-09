@@ -54,6 +54,35 @@ one site in a run, `--all`, accounts whose username differs from the one given,
 sites with single sign-on plugins, and a server where the login is `master`.
 Dry runs only were done on a second server.
 
+## Whole-server dry run (already done): one server, master login, no changes
+
+Date: 2026-10-09. Tool code: commit `d5a0147` (before the two fixes below). Run from
+the Cloudways browser terminal as the master user, because SSH from a laptop was
+refused (see the runbook). `add` for an existing staff account with `--all`, no
+`--execute`: nothing was changed. 62 folders, 59 processed, finished in a few minutes.
+
+| Result | Folders |
+|---|---|
+| `ALREADY EXISTS` | 18 |
+| `WOULD CREATE` | 28 |
+| `EMAIL CONFLICT` | 2 (one site, the email sits on a different username) |
+| `FAILED` | 8 |
+| `SKIPPED` (not WordPress) | 3 |
+
+It found two bugs, both fixed and covered by new tests:
+
+- **Every site was processed twice.** 29 of the 62 entries were symlinks, the
+  friendly-name alias of another folder, so 28 sites showed as 59 applications and
+  each site's result appeared twice. Fixed: one entry per physical folder.
+- **8 folders (4 sites) reported `FAILED - marker lookup`** although the user existed.
+  A stale Object Cache Pro drop-in printed `objectcache.critical: Failed to locate and
+  load object cache API` on every call, and the tool read that as an error. Fixed:
+  that one line is ignored. A live `disable` or `restore` on a site with an
+  object-cache drop-in now warns that cached user data may be stale. Whether Redis
+  really serves the old user was not tested.
+
+The fixed code has not been run on the server yet.
+
 Run by: ______  Date: ______  Tool version (git commit): ______
 SSH login user (`master` or an application user): ______
 Server: ______  WP-CLI version (`wp --version`): ______

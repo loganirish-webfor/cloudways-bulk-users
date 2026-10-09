@@ -24,9 +24,10 @@ chmod +x ~/webfor-wp-users/bin/webfor-wp-users
 Check WP-CLI works for your user: `wp --info`. The tool calls `wp` from your
 `PATH` (set `WP_BIN=/path/to/wp` to use another binary). It was tested in the
 Docker sandbox (GNU bash 5.3.9, WP-CLI 2.12.0, WordPress 7.1.3) and in dry runs
-(no changes) on two live Cloudways servers, bash 5.2.15 and WP-CLI 2.12.0, logged
-in as an application user. Live `--execute` runs have not been tried on a real
-server yet. Check the server with `bash --version`; other bash versions are
+(no changes) on three live Cloudways servers, bash 5.2.15 and WP-CLI 2.12.0, once
+as the master user across a whole server. Live `--execute` has been run once, on
+one site with a throwaway Editor account (see `docs/pilot-results.md`), not yet
+on several sites. Check the server with `bash --version`; other bash versions are
 untested.
 
 Print the built-in help at any time: `bin/webfor-wp-users --help`.
@@ -63,6 +64,32 @@ cleared from time to time, then remove the tool from the server:
 ```bash
 ssh <you>@<server> 'rm -rf /tmp/webfor-wp-users'
 ```
+
+### If the master login works in the browser terminal but not over SSH
+
+On one Cloudways server the master user could log in with its password in the
+panel's **Launch SSH Terminal** (Server, Master Credentials), but SSH from a laptop
+was refused with `Permission denied (publickey,password)`, even though the laptop's
+key was listed in `~/.openssh/authorized_keys` (this server reads keys from
+`~/.openssh/`, not `~/.ssh/`) with folder mode 700 and file mode 600, owned by the
+master user. The cause was not found; Cloudways support is the next step. Things
+learned on the way:
+
+- The username in the panel is the SSH login. At the `login:` prompt type it by
+  hand. In that terminal, **Cmd+V on a Mac typed a literal `v`** after the pasted
+  text, so a pasted password failed with `Login incorrect`. Right-click and Paste,
+  or type the password.
+- The master user has no `sudo`, so the SSH log cannot be read from there.
+- The tool is public, so the terminal can run it without SSH or `scp`. Pin the
+  download to the commit you tested (replace `<commit>`):
+
+```bash
+mkdir -p ~/cwbu && cd ~/cwbu && curl -fsSL https://github.com/loganirish-webfor/cloudways-bulk-users/archive/<commit>.tar.gz | tar xz --strip-components=1
+bin/webfor-wp-users add --username jane.doe --email jane.doe@webfor.com --first-name Jane --last-name Doe --display-name "Jane Doe" --all > /tmp/scan.txt 2>&1; tail -n 40 /tmp/scan.txt
+```
+
+A dry run (no `--execute`) reads every site and changes nothing. A whole-server
+dry run of 62 folders finished in a few minutes.
 
 The tool runs every WP-CLI call from inside the site's folder. Cloudways'
 `wp-config.php` loads `wp-salt.php` by a relative path, and WP-CLI fails with

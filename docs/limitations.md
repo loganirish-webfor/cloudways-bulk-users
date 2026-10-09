@@ -63,6 +63,27 @@
   Registration" notice (to the site's admin email address, usually the client)
   and the user's "Login Details" mail. Without `--send-email` nothing is sent.
 
+- **Persistent object cache.** A site with `wp-content/object-cache.php` (for
+  example Object Cache Pro or Redis) serves that cache from a plugin, and the tool
+  runs with plugins skipped, so it cannot reach or flush it. A live `disable` or
+  `restore` on such a site adds the warning `object-cache drop-in present: cached
+  user data may be stale, flush this site's object cache and re-check the user`.
+  Whether Redis really keeps serving the old user was not tested; treat the
+  warning as a to-do: flush the site's object cache (Cloudways panel, or WP-CLI
+  run normally) and confirm the account behaves as expected.
+- **Drop-in noise.** A stale Object Cache Pro drop-in prints `objectcache.critical:
+  Failed to locate and load object cache API` to stderr on every WP-CLI call. The
+  tool ignores that one exact line. Before this was handled, four live sites
+  reported `FAILED - marker lookup` for a user that existed. Any other stderr text
+  still counts as an error.
+- **Alias folders.** Cloudways lists each site twice under `/home/master/applications`:
+  the real folder (random id) and a friendly-name symlink to it (29 of 62 entries
+  on one live server). The tool processes one entry per physical folder, prefers the
+  real folder, and names the skipped aliases in the output and the log. `--sites`
+  with only an alias works and uses the name you gave; naming both processes the site
+  once; `--exclude` on either name excludes the site. A symlink that points somewhere
+  else is kept and reported.
+
 ## Roles
 
 - **Plugin-defined roles are invisible to `add --role`.** Role lookups run with

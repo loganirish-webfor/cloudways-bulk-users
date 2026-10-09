@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Test double for WP-CLI: injects failures, hangs or a canary password leak, otherwise passes through.
 if [ -n "${SHIM_SLEEP:-}" ]; then sleep "$SHIM_SLEEP"; fi
+# Noise: print this line to stderr on every call, as a stale Object Cache Pro drop-in does on a live server.
+if [ -n "${SHIM_NOISE:-}" ]; then printf '%s\n' "$SHIM_NOISE" >&2; fi
 if [ -n "${SHIM_FAIL:-}" ]; then
   case " $* " in
     *" $SHIM_FAIL "*) echo "Error: injected failure for $SHIM_FAIL" >&2; exit 1 ;;

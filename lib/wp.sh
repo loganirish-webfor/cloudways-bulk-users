@@ -47,7 +47,22 @@ wpx_nostdout() {
 }
 
 # err_clean: WP_ERR without PHP notices/warnings/deprecations and blank lines.
-err_clean() { printf '%s\n' "$WP_ERR" | grep -v -E '^(PHP )?(Notice|Warning|Deprecated)' | grep -v '^$'; }
+# Also dropped: the one line a stale Object Cache Pro drop-in prints on EVERY call, working
+# or not ("objectcache.critical: Failed to locate and load object cache API"). With it
+# counted, a missing meta key (exit 1, no message) looked like an error and four live
+# sites came back FAILED. Only that exact line is ignored; any other stderr text counts.
+err_clean() {
+  printf '%s\n' "$WP_ERR" | grep -v -E '^(PHP )?(Notice|Warning|Deprecated)' \
+    | grep -v -x -F 'objectcache.critical: Failed to locate and load object cache API' | grep -v '^$'
+}
+
+# A persistent object cache (wp-content/object-cache.php, usually Redis) is served by a
+# plugin, and this tool skips plugins, so it cannot reach or flush that cache. After a
+# live change the cache may still hold the old user until it expires or is flushed.
+note_object_cache() {
+  [ -e "$SITE_PATH/wp-content/object-cache.php" ] || return 0
+  R_WARN="${R_WARN:+$R_WARN; }object-cache drop-in present: cached user data may be stale, flush this site's object cache and re-check the user"
+}
 
 err_reason() {
   local r

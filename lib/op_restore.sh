@@ -66,5 +66,6 @@ op_restore_site() {
   fi
   R_WARN="password stays unusable; employee must use Lost your password"
   [ -n "$MK_ROLES" ] || R_WARN="$R_WARN; account had no roles when disabled"
+  note_object_cache
   record_result RESTORED "roles: ${MK_ROLES:-none}"
 }

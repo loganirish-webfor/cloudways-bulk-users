@@ -71,6 +71,7 @@ disable_steps() { # ID RESUME ORIG_EMAIL
   if ! marker_write "$id" complete; then
     record_result FAILED "access removed but marker not finalised: $(err_reason)"; return
   fi
+  note_object_cache
   record_result DISABLED "roles removed: ${MK_ROLES:-none}; email neutralised"
 }
 

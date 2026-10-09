@@ -113,8 +113,8 @@ validate_args() {
 }
 
 select_targets() {
-  local d t x skip out=()
-  TARGETS=()
+  local d t x xp skip out=()
+  TARGETS=(); ALIAS_SKIPPED=()
   if [ "$ALL" -eq 1 ]; then
     while IFS= read -r d; do TARGETS+=("$d"); done < <(discover_apps)
   else
@@ -125,11 +125,16 @@ select_targets() {
     IFS=',' read -r -a _exc <<< "$EXCLUDE"
     for t in ${TARGETS[@]+"${TARGETS[@]}"}; do
       skip=0
-      for x in "${_exc[@]}"; do [ "$t" = "$x" ] && skip=1; done
+      for x in "${_exc[@]}"; do
+        # Excluding either name of a site (real folder or alias symlink) excludes the site.
+        xp="$(app_realpath "$x")"
+        if [ "$t" = "$x" ] || { [ -n "$xp" ] && [ "$(app_realpath "$t")" = "$xp" ]; }; then skip=1; fi
+      done
       [ "$skip" -eq 0 ] && out+=("$t")
     done
     if [ ${#out[@]} -eq 0 ]; then TARGETS=(); else TARGETS=("${out[@]}"); fi
   fi
+  collapse_aliases
 }
 
 confirm_all() {
@@ -176,6 +181,9 @@ main() {
   init_run
   say "$MODE: $OPERATION $USERNAME <$EMAIL> server=$SERVER_NAME"
   say "Applications to process: ${#TARGETS[@]}"
+  if [ ${#ALIAS_SKIPPED[@]} -gt 0 ]; then
+    say "Skipped ${#ALIAS_SKIPPED[@]} alias folder(s) that point to a site already in the list: $(IFS=,; printf '%s' "${ALIAS_SKIPPED[*]}")"
+  fi
   say "Log: $LOG_FILE"
   local i=0 n=${#TARGETS[@]} f
   for f in "${TARGETS[@]}"; do
