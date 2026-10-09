@@ -137,9 +137,11 @@ browser terminal. `add` of the tester's own staff account as an Administrator on
 | Read-only check afterwards | Role `administrator` on all 11. The check did not print the email (it kept only the last output line), so the email rests on the tool's own `CREATED` line and on the same check on the first three sites, which did show it. |
 | Time | A minute or two for 11 sites. |
 
-Server state afterwards: of the 28 WordPress sites on that server, 27 have the account.
-The remaining one has the same email under a different username, so the tool reported
-`EMAIL CONFLICT` and changed nothing; it needs a decision by hand. Two folders are not
+Server state afterwards: of the 28 WordPress sites on that server, 27 have the account
+under the username given. The remaining one has the same email under a different
+username, so the tool reported `EMAIL CONFLICT` and changed nothing. A read-only look
+(`wp user get <id>`) showed that account belongs to the tester, so that site already
+had them and needed no change. Result: all 28 sites covered. Two folders are not
 WordPress and are skipped. Other servers were not touched.
 
 This went beyond the 2-3 site pilot that the brief says a second person should review
